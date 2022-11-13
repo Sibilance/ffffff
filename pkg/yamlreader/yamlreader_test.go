@@ -6,48 +6,132 @@ import (
 	"testing"
 )
 
-func TestReadFile(t *testing.T) {
+func getTestFile(t *testing.T) string {
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	testFile := filepath.Join(cwd, "test", t.Name()+".yaml")
+	return filepath.Join(cwd, "test", t.Name()+".yaml")
+}
 
-	node, err := ReadFile("test", testFile)
+func compareNodes(t *testing.T, actual, expected *Node) {
+	if actual.Name != expected.Name {
+		t.Fatalf("expected Name=%s, got %s", expected.Name, actual.Name)
+	}
+
+	if actual.FileName != expected.FileName {
+		t.Fatalf("expected FileName=%s, got %s", expected.FileName, actual.FileName)
+	}
+
+	if actual.Line != expected.Line {
+		t.Fatalf("expected Line=%d, got %d", expected.Line, actual.Line)
+	}
+
+	if actual.Column != expected.Column {
+		t.Fatalf("expected Column=%d, got %d", expected.Column, actual.Column)
+	}
+
+	if actual.Comment != expected.Comment {
+		t.Fatalf("expected Comment:\n%s\n\ngot:\n%s", expected.Comment, actual.Comment)
+	}
+
+	if actual.Kind != expected.Kind {
+		t.Fatalf("expected Kind=%s, got %s", expected.Kind, actual.Kind)
+	}
+
+	if actual.Tag != expected.Tag {
+		t.Fatalf("expected Tag=%s, got %s", expected.Tag, actual.Tag)
+	}
+
+	if len(actual.Sequence) != len(expected.Sequence) {
+		t.Fatalf("expected len(Sequence)=%d, got %d", len(expected.Sequence), len(actual.Sequence))
+	}
+
+	for i, innerExpected := range expected.Sequence {
+		innerActual := actual.Sequence[i]
+		compareNodes(t, &innerActual, &innerExpected)
+	}
+
+	if len(actual.Mapping) != len(expected.Mapping) {
+		t.Fatalf("expected len(Mapping)=%d, got %d", len(expected.Mapping), len(actual.Mapping))
+	}
+
+	for k, innerExpected := range expected.Mapping {
+		innerActual := actual.Mapping[k]
+		compareNodes(t, &innerActual, &innerExpected)
+	}
+
+	if actual.Scalar != expected.Scalar {
+		t.Fatalf("expected Scalar=%s, got %s", expected.Scalar, actual.Scalar)
+	}
+}
+
+// Test that reading a file containing a single document returns the only
+// node found in that document. Checks that comments, line numbers, Kinds,
+// and Tags are preserved properly.
+func TestReadFile(t *testing.T) {
+	testFile := getTestFile(t)
+
+	actual, err := ReadFile("test", testFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if node.Name != "test" {
-		t.Fatalf("expected Name=test, got %s", node.Name)
+	expected := &Node{
+		Name:     "test",
+		FileName: testFile,
+		Line:     2,
+		Column:   1,
+		Comment:  "# Head Comment\n\n# Line Comment",
+		Kind:     ScalarNode,
+		Tag:      "!!str",
+		Scalar:   "Hello World",
 	}
 
-	if node.FileName != testFile {
-		t.Fatalf("expected FileName=%s, got %s", testFile, node.FileName)
+	compareNodes(t, actual, expected)
+}
+
+// Test that reading a file containing 'null' returns a null node.
+func TestReadFileNull(t *testing.T) {
+	testFile := getTestFile(t)
+
+	actual, err := ReadFile("test", testFile)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if node.Line != 2 {
-		t.Fatalf("expected Line=2, got %d", node.Line)
+	expected := &Node{
+		Name:     "test",
+		FileName: testFile,
+		Line:     1,
+		Column:   1,
+		Kind:     ScalarNode,
+		Tag:      "!!null",
+		Scalar:   "null",
 	}
 
-	if node.Column != 1 {
-		t.Fatalf("expected Column=1, got %d", node.Column)
+	compareNodes(t, actual, expected)
+}
+
+// Test that reading an empty file returns a null node.
+func TestReadFileEmpty(t *testing.T) {
+	testFile := getTestFile(t)
+
+	actual, err := ReadFile("test", testFile)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if node.Comment != "# Head Comment\n\n# Line Comment" {
-		t.Fatalf("unexpected comment:\n%s", node.Comment)
+	expected := &Node{
+		Name:     "test",
+		FileName: testFile,
+		Line:     0,
+		Column:   0,
+		Kind:     ScalarNode,
+		Tag:      "!!null",
+		Scalar:   "",
 	}
 
-	if node.Kind != ScalarNode {
-		t.Fatalf("expected Kind=ScalarNode, got %s", node.Kind)
-	}
-
-	if node.Tag != "!!str" {
-		t.Fatalf("expected Tag=str, got %s", node.Tag)
-	}
-
-	if node.Scalar != "Hello World" {
-		t.Fatalf("expected Scalar=Hello World, got %s", node.Scalar)
-	}
+	compareNodes(t, actual, expected)
 }

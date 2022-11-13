@@ -29,6 +29,7 @@ func ReadFile(name string, fileName string) (n *Node, err error) {
 				err = fmt.Errorf("%s: %s", n, err)
 				return
 			}
+			err = nil
 			break
 		}
 		documents = append(documents, &document)
