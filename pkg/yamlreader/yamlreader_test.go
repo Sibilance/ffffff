@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
 func TestReadFile(t *testing.T) {
@@ -16,32 +14,40 @@ func TestReadFile(t *testing.T) {
 
 	testFile := filepath.Join(cwd, "test", t.Name()+".yaml")
 
-	nodes, err := ReadFile(testFile)
+	node, err := ReadFile("test", testFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(nodes) != 1 {
-		t.Fatal("expected exactly one document, got:", len(nodes))
+	if node.Name != "test" {
+		t.Fatalf("expected Name=test, got %s", node.Name)
 	}
 
-	node := nodes[0]
-
-	if node.Kind != yaml.DocumentNode {
-		t.Fatal("expected DocumentNode, got:", node.Kind)
+	if node.FileName != testFile {
+		t.Fatalf("expected FileName=%s, got %s", testFile, node.FileName)
 	}
 
-	if len(node.Content) != 1 {
-		t.Fatal("expected one child, got:", len(node.Content))
+	if node.Line != 2 {
+		t.Fatalf("expected Line=2, got %d", node.Line)
 	}
 
-	child := node.Content[0]
-
-	if child.Kind != yaml.ScalarNode {
-		t.Fatal("expected ScalarNode, got:", child.Kind)
+	if node.Column != 1 {
+		t.Fatalf("expected Column=1, got %d", node.Column)
 	}
 
-	if child.Value != "Hello World" {
-		t.Fatal("expected Hello World, got:", child.Value)
+	if node.Comment != "# Head Comment\n\n# Line Comment" {
+		t.Fatalf("unexpected comment:\n%s", node.Comment)
+	}
+
+	if node.Kind != ScalarNode {
+		t.Fatalf("expected Kind=ScalarNode, got %s", node.Kind)
+	}
+
+	if node.Tag != "!!str" {
+		t.Fatalf("expected Tag=str, got %s", node.Tag)
+	}
+
+	if node.Scalar != "Hello World" {
+		t.Fatalf("expected Scalar=Hello World, got %s", node.Scalar)
 	}
 }

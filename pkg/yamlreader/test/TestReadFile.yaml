@@ -1,1 +1,3 @@
-'Hello World'
+# Head Comment
+'Hello World'  # Line Comment
+# Tail Comment (ignored)
