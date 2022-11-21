@@ -15,3 +15,7 @@
 - ~  # null
 - A string
 - !!str 123  # Also a string
+- -9223372036854775809  # overflow -> float
+- 9223372036854775808  # overflow -> float
+- 18446744073709551615  # largest uint64 -> float
+- 18446744073709551616  # one greater -> float

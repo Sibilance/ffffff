@@ -194,7 +194,17 @@ func (n *Node) unmarshalYAML(yamlNode *yaml.Node, recursionDetection map[*yaml.N
 			yamlNode.Decode(&n.Bool)
 		case IntTag:
 			n.Kind = IntegerNode
-			yamlNode.Decode(&n.Int)
+			// We have to check for overflows of positive integers because the yaml
+			// library detects anything that fits in int64 or uint64 as !!int.
+			var overflowCheck uint64
+			yamlNode.Decode(&overflowCheck)
+			if overflowCheck > ^uint64(0)>>1 {
+				n.Kind = FloatNode
+				n.Tag = FloatTag
+				yamlNode.Decode(&n.Float)
+			} else {
+				yamlNode.Decode(&n.Int)
+			}
 		case FloatTag:
 			n.Kind = FloatNode
 			yamlNode.Decode(&n.Float)
