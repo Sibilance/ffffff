@@ -17,35 +17,35 @@ func getTestFile(t *testing.T) string {
 
 func compareNodes(t *testing.T, actual, expected *Node) {
 	if actual.Name != expected.Name {
-		t.Fatalf("expected Name=%s, got %s", expected.Name, actual.Name)
+		t.Fatalf("%s: expected Name=%s, got %s", actual.Name, expected.Name, actual.Name)
 	}
 
 	if actual.FileName != expected.FileName {
-		t.Fatalf("expected FileName=%s, got %s", expected.FileName, actual.FileName)
+		t.Fatalf("%s: expected FileName=%s, got %s", actual.Name, expected.FileName, actual.FileName)
 	}
 
 	if actual.Line != expected.Line {
-		t.Fatalf("expected Line=%d, got %d", expected.Line, actual.Line)
+		t.Fatalf("%s: expected Line=%d, got %d", actual.Name, expected.Line, actual.Line)
 	}
 
 	if actual.Column != expected.Column {
-		t.Fatalf("expected Column=%d, got %d", expected.Column, actual.Column)
+		t.Fatalf("%s: expected Column=%d, got %d", actual.Name, expected.Column, actual.Column)
 	}
 
 	if actual.Comment != expected.Comment {
-		t.Fatalf("expected Comment:\n%s\n\ngot:\n%s", expected.Comment, actual.Comment)
+		t.Fatalf("%s: expected Comment:\n%s\n\ngot:\n%s", actual.Name, expected.Comment, actual.Comment)
 	}
 
 	if actual.Kind != expected.Kind {
-		t.Fatalf("expected Kind=%s, got %s", expected.Kind, actual.Kind)
+		t.Fatalf("%s: expected Kind=%s, got %s", actual.Name, expected.Kind, actual.Kind)
 	}
 
 	if actual.Tag != expected.Tag {
-		t.Fatalf("expected Tag=%s, got %s", expected.Tag, actual.Tag)
+		t.Fatalf("%s: expected Tag=%s, got %s", actual.Name, expected.Tag, actual.Tag)
 	}
 
 	if len(actual.Sequence) != len(expected.Sequence) {
-		t.Fatalf("expected len(Sequence)=%d, got %d", len(expected.Sequence), len(actual.Sequence))
+		t.Fatalf("%s: expected len(Sequence)=%d, got %d", actual.Name, len(expected.Sequence), len(actual.Sequence))
 	}
 
 	for i, innerExpected := range expected.Sequence {
@@ -54,7 +54,7 @@ func compareNodes(t *testing.T, actual, expected *Node) {
 	}
 
 	if len(actual.Mapping) != len(expected.Mapping) {
-		t.Fatalf("expected len(Mapping)=%d, got %d", len(expected.Mapping), len(actual.Mapping))
+		t.Fatalf("%s: expected len(Mapping)=%d, got %d", actual.Name, len(expected.Mapping), len(actual.Mapping))
 	}
 
 	for k, innerExpected := range expected.Mapping {
@@ -63,19 +63,19 @@ func compareNodes(t *testing.T, actual, expected *Node) {
 	}
 
 	if actual.Bool != expected.Bool {
-		t.Fatalf("expected Bool=%t, got %t", expected.Bool, actual.Bool)
+		t.Fatalf("%s: expected Bool=%t, got %t", actual.Name, expected.Bool, actual.Bool)
 	}
 
 	if actual.Int != expected.Int {
-		t.Fatalf("expected Int=%d, got %d", expected.Int, actual.Int)
+		t.Fatalf("%s: expected Int=%d, got %d", actual.Name, expected.Int, actual.Int)
 	}
 
 	if actual.Float != expected.Float {
-		t.Fatalf("expected Float=%f, got %f", expected.Float, actual.Float)
+		t.Fatalf("%s: expected Float=%f, got %f", actual.Name, expected.Float, actual.Float)
 	}
 
 	if actual.Str != expected.Str {
-		t.Fatalf("expected Str=%s, got %s", expected.Str, actual.Str)
+		t.Fatalf("%s: expected Str=%s, got %s", actual.Name, expected.Str, actual.Str)
 	}
 }
 
@@ -150,10 +150,51 @@ func TestReadFileEmpty(t *testing.T) {
 	expected := &Node{
 		Name:     "test",
 		FileName: testFile,
-		Line:     0,
-		Column:   0,
 		Kind:     NullNode,
 		Tag:      "!!null",
+	}
+
+	compareNodes(t, actual, expected)
+}
+
+// Test that reading a file with multiple documents returns a sequence node.
+func TestReadFileMultipleDocuments(t *testing.T) {
+	testFile := getTestFile(t)
+
+	actual := &Node{
+		Name:     "test",
+		FileName: testFile,
+	}
+	err := actual.ReadFile(testFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := &Node{
+		Name:     "test",
+		FileName: testFile,
+		Kind:     SequenceNode,
+		Tag:      "!!seq",
+		Sequence: []Node{
+			{
+				Name:     "test[0]",
+				FileName: testFile,
+				Line:     2,
+				Column:   1,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "Document one",
+			},
+			{
+				Name:     "test[1]",
+				FileName: testFile,
+				Line:     4,
+				Column:   1,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "Document two",
+			},
+		},
 	}
 
 	compareNodes(t, actual, expected)

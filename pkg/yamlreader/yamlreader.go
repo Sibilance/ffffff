@@ -102,6 +102,7 @@ func (n *Node) ReadStream(file io.Reader) error {
 		}
 	} else if len(documents) > 1 {
 		n.Kind = SequenceNode
+		n.Tag = SeqTag
 		for i, document := range documents {
 			innerNode := Node{
 				Name:     fmt.Sprintf("%s[%d]", n.Name, i),
