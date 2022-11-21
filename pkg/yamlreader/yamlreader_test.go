@@ -62,8 +62,20 @@ func compareNodes(t *testing.T, actual, expected *Node) {
 		compareNodes(t, &innerActual, &innerExpected)
 	}
 
-	if actual.Scalar != expected.Scalar {
-		t.Fatalf("expected Scalar=%s, got %s", expected.Scalar, actual.Scalar)
+	if actual.Bool != expected.Bool {
+		t.Fatalf("expected Bool=%t, got %t", expected.Bool, actual.Bool)
+	}
+
+	if actual.Int != expected.Int {
+		t.Fatalf("expected Int=%d, got %d", expected.Int, actual.Int)
+	}
+
+	if actual.Float != expected.Float {
+		t.Fatalf("expected Float=%f, got %f", expected.Float, actual.Float)
+	}
+
+	if actual.Str != expected.Str {
+		t.Fatalf("expected Str=%s, got %s", expected.Str, actual.Str)
 	}
 }
 
@@ -88,9 +100,9 @@ func TestReadFile(t *testing.T) {
 		Line:     2,
 		Column:   1,
 		Comment:  "# Head Comment\n\n# Line Comment",
-		Kind:     ScalarNode,
+		Kind:     StringNode,
 		Tag:      "!!str",
-		Scalar:   "Hello World",
+		Str:      "Hello World",
 	}
 
 	compareNodes(t, actual, expected)
@@ -114,9 +126,9 @@ func TestReadFileNull(t *testing.T) {
 		FileName: testFile,
 		Line:     1,
 		Column:   1,
-		Kind:     ScalarNode,
+		Kind:     NullNode,
 		Tag:      "!!null",
-		Scalar:   "null",
+		Str:      "null",
 	}
 
 	compareNodes(t, actual, expected)
@@ -140,9 +152,8 @@ func TestReadFileEmpty(t *testing.T) {
 		FileName: testFile,
 		Line:     0,
 		Column:   0,
-		Kind:     ScalarNode,
+		Kind:     NullNode,
 		Tag:      "!!null",
-		Scalar:   "",
 	}
 
 	compareNodes(t, actual, expected)

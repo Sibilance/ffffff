@@ -15,15 +15,19 @@ const (
 	UndefinedNode Kind = iota
 	SequenceNode
 	MappingNode
-	ScalarNode
+	BooleanNode
+	IntegerNode
+	FloatNode
+	StringNode
+	NullNode
 
-	NullTag  string = "!!null"
+	SeqTag   string = "!!seq"
+	MapTag   string = "!!map"
 	BoolTag  string = "!!bool"
 	IntTag   string = "!!int"
 	FloatTag string = "!!float"
 	StrTag   string = "!!str"
-	MapTag   string = "!!map"
-	SeqTag   string = "!!seq"
+	NullTag  string = "!!null"
 )
 
 func (kind Kind) String() string {
@@ -34,8 +38,16 @@ func (kind Kind) String() string {
 		return "SequenceNode"
 	case MappingNode:
 		return "MappingNode"
-	case ScalarNode:
-		return "ScalarNode"
+	case BooleanNode:
+		return "BooleanNode"
+	case IntegerNode:
+		return "IntegerNode"
+	case FloatNode:
+		return "FloatNode"
+	case StringNode:
+		return "StringNode"
+	case NullNode:
+		return "NullNode"
 	}
 	return "unknown"
 }
@@ -50,7 +62,10 @@ type Node struct {
 	Tag      string
 	Sequence []Node
 	Mapping  map[string]Node
-	Scalar   string
+	Bool     bool
+	Int      int64
+	Float    float64
+	Str      string
 }
 
 func (n *Node) String() string {
@@ -98,7 +113,7 @@ func (n *Node) ReadStream(file io.Reader) error {
 			n.Sequence = append(n.Sequence, innerNode)
 		}
 	} else {
-		n.Kind = ScalarNode
+		n.Kind = NullNode
 		n.Tag = NullTag
 	}
 
@@ -164,8 +179,22 @@ func (n *Node) unmarshalYAML(yamlNode *yaml.Node, recursionDetection map[*yaml.N
 		}
 
 	case yaml.ScalarNode:
-		n.Kind = ScalarNode
-		n.Scalar = yamlNode.Value
+		n.Str = yamlNode.Value
+		switch n.Tag {
+		case BoolTag:
+			n.Kind = BooleanNode
+			yamlNode.Decode(&n.Bool)
+		case IntTag:
+			n.Kind = IntegerNode
+			yamlNode.Decode(&n.Int)
+		case FloatTag:
+			n.Kind = FloatNode
+			yamlNode.Decode(&n.Float)
+		case NullTag:
+			n.Kind = NullNode
+		default:
+			n.Kind = StringNode
+		}
 
 	default:
 		return fmt.Errorf("%s: unknown node kind", n)
