@@ -245,3 +245,75 @@ func TestReadFileRecursiveAlias(t *testing.T) {
 		t.Fatalf("wrong error returned: %s", err.Error())
 	}
 }
+
+func TestSequence(t *testing.T) {
+	actual := ReadTestFile(t)
+	testFile := getTestFile(t)
+
+	expected := &Node{
+		Name:     "test",
+		FileName: testFile,
+		Line:     1,
+		Column:   1,
+		Kind:     SequenceNode,
+		Tag:      "!!seq",
+		Sequence: []Node{
+			{
+				Name:     "test[0]",
+				FileName: testFile,
+				Line:     1,
+				Column:   3,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "Item 1",
+			},
+			{
+				Name:     "test[1]",
+				FileName: testFile,
+				Line:     2,
+				Column:   3,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "Item 2",
+			},
+		},
+	}
+
+	compareNodes(t, actual, expected)
+}
+
+func TestMapping(t *testing.T) {
+	actual := ReadTestFile(t)
+	testFile := getTestFile(t)
+
+	expected := &Node{
+		Name:     "test",
+		FileName: testFile,
+		Line:     1,
+		Column:   1,
+		Kind:     MappingNode,
+		Tag:      "!!map",
+		Mapping: map[string]Node{
+			"key 1": {
+				Name:     "test.key 1",
+				FileName: testFile,
+				Line:     1,
+				Column:   8,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "value 1",
+			},
+			"key 2": {
+				Name:     "test.key 2",
+				FileName: testFile,
+				Line:     2,
+				Column:   8,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "value 2",
+			},
+		},
+	}
+
+	compareNodes(t, actual, expected)
+}

@@ -170,7 +170,8 @@ func (n *Node) unmarshalYAML(yamlNode *yaml.Node, recursionDetection map[*yaml.N
 
 	case yaml.MappingNode:
 		n.Kind = MappingNode
-		mapping := map[string]*yaml.Node{}
+		n.Mapping = make(map[string]Node)
+		mapping := map[string]yaml.Node{}
 		if err := yamlNode.Decode(mapping); err != nil {
 			return fmt.Errorf("%s: %s", n, err)
 		}
@@ -179,7 +180,7 @@ func (n *Node) unmarshalYAML(yamlNode *yaml.Node, recursionDetection map[*yaml.N
 				Name:     fmt.Sprintf("%s.%s", n.Name, k),
 				FileName: n.FileName,
 			}
-			if err := innerNode.unmarshalYAML(innerYamlNode, recursionDetection); err != nil {
+			if err := innerNode.unmarshalYAML(&innerYamlNode, recursionDetection); err != nil {
 				return err
 			}
 			n.Mapping[k] = innerNode
