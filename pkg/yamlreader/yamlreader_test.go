@@ -3,6 +3,7 @@ package yamlreader
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -79,24 +80,43 @@ func compareNodes(t *testing.T, actual, expected *Node) {
 	}
 }
 
-// Test that reading a file containing a single document returns the only
-// node found in that document. Checks that comments, line numbers, Kinds,
-// and Tags are preserved properly.
-func TestReadFile(t *testing.T) {
+func ReadTestFile(t *testing.T) *Node {
 	testFile := getTestFile(t)
 
 	actual := &Node{
-		Name:     "test",
-		FileName: testFile,
+		Name: "test",
 	}
 	err := actual.ReadFile(testFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	return actual
+}
+
+// Test that reading a missing file returns an error.
+func TestReadFileMissing(t *testing.T) {
+	testFile := getTestFile(t)
+
+	actual := &Node{}
+	err := actual.ReadFile(testFile)
+	if err == nil {
+		t.Fatalf("no error returned for missing file")
+	}
+	if !strings.Contains(err.Error(), "no such file or directory") {
+		t.Fatalf("wrong error returned: %s", err.Error())
+	}
+}
+
+// Test that reading a file containing a single document returns the only
+// node found in that document. Checks that comments, line numbers, Kinds,
+// and Tags are preserved properly.
+func TestReadFile(t *testing.T) {
+	actual := ReadTestFile(t)
+
 	expected := &Node{
 		Name:     "test",
-		FileName: testFile,
+		FileName: getTestFile(t),
 		Line:     2,
 		Column:   1,
 		Comment:  "# Head Comment\n\n# Line Comment",
@@ -110,20 +130,11 @@ func TestReadFile(t *testing.T) {
 
 // Test that reading a file containing 'null' returns a null node.
 func TestReadFileNull(t *testing.T) {
-	testFile := getTestFile(t)
-
-	actual := &Node{
-		Name:     "test",
-		FileName: testFile,
-	}
-	err := actual.ReadFile(testFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	actual := ReadTestFile(t)
 
 	expected := &Node{
 		Name:     "test",
-		FileName: testFile,
+		FileName: getTestFile(t),
 		Line:     1,
 		Column:   1,
 		Kind:     NullNode,
@@ -136,20 +147,11 @@ func TestReadFileNull(t *testing.T) {
 
 // Test that reading an empty file returns a null node.
 func TestReadFileEmpty(t *testing.T) {
-	testFile := getTestFile(t)
-
-	actual := &Node{
-		Name:     "test",
-		FileName: testFile,
-	}
-	err := actual.ReadFile(testFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	actual := ReadTestFile(t)
 
 	expected := &Node{
 		Name:     "test",
-		FileName: testFile,
+		FileName: getTestFile(t),
 		Kind:     NullNode,
 		Tag:      "!!null",
 	}
@@ -159,16 +161,8 @@ func TestReadFileEmpty(t *testing.T) {
 
 // Test that reading a file with multiple documents returns a sequence node.
 func TestReadFileMultipleDocuments(t *testing.T) {
+	actual := ReadTestFile(t)
 	testFile := getTestFile(t)
-
-	actual := &Node{
-		Name:     "test",
-		FileName: testFile,
-	}
-	err := actual.ReadFile(testFile)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	expected := &Node{
 		Name:     "test",
@@ -198,4 +192,56 @@ func TestReadFileMultipleDocuments(t *testing.T) {
 	}
 
 	compareNodes(t, actual, expected)
+}
+
+// Test that aliases are followed correctly.
+func TestReadFileAlias(t *testing.T) {
+	actual := ReadTestFile(t)
+	testFile := getTestFile(t)
+
+	expected := &Node{
+		Name:     "test",
+		FileName: testFile,
+		Line:     1,
+		Column:   1,
+		Kind:     SequenceNode,
+		Tag:      "!!seq",
+		Sequence: []Node{
+			{
+				Name:     "test[0]",
+				FileName: testFile,
+				Line:     1,
+				Column:   3,
+				Comment:  "# Comment 1",
+				Kind:     StringNode,
+				Tag:      "!MyTag",
+				Str:      "Thing to be copied.",
+			},
+			{
+				Name:     "test[1]",
+				FileName: testFile,
+				Line:     2,
+				Column:   3,
+				Comment:  "# Comment 2",
+				Kind:     StringNode,
+				Tag:      "!MyTag",
+				Str:      "Thing to be copied.",
+			},
+		},
+	}
+
+	compareNodes(t, actual, expected)
+}
+
+func TestReadFileRecursiveAlias(t *testing.T) {
+	testFile := getTestFile(t)
+
+	actual := &Node{}
+	err := actual.ReadFile(testFile)
+	if err == nil {
+		t.Fatalf("no error returned for recursive alias")
+	}
+	if !strings.Contains(err.Error(), "recursive alias detected") {
+		t.Fatalf("wrong error returned: %s", err.Error())
+	}
 }

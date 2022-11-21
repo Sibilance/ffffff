@@ -73,6 +73,8 @@ func (n *Node) String() string {
 }
 
 func (n *Node) ReadFile(fileName string) error {
+	n.FileName = fileName
+
 	file, err := os.Open(fileName)
 	if err != nil {
 		return err
@@ -147,7 +149,11 @@ func (n *Node) unmarshalYAML(yamlNode *yaml.Node, recursionDetection map[*yaml.N
 			return fmt.Errorf("%s: recursive alias detected", n)
 		}
 		recursionDetection[yamlNode] = struct{}{}
-		return n.unmarshalYAML(yamlNode.Alias, recursionDetection)
+		// Follow the alias, but keep these attributes from the alias node.
+		line, column, comment := n.Line, n.Column, n.Comment
+		err := n.unmarshalYAML(yamlNode.Alias, recursionDetection)
+		n.Line, n.Column, n.Comment = line, column, comment
+		return err
 
 	case yaml.SequenceNode:
 		n.Kind = SequenceNode
