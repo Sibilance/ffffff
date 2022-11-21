@@ -233,6 +233,7 @@ func TestReadFileAlias(t *testing.T) {
 	compareNodes(t, actual, expected)
 }
 
+// Test that recursive aliases are detected and return an error.
 func TestReadFileRecursiveAlias(t *testing.T) {
 	testFile := getTestFile(t)
 
@@ -246,6 +247,7 @@ func TestReadFileRecursiveAlias(t *testing.T) {
 	}
 }
 
+// Test that sequences are decoded correctly.
 func TestSequence(t *testing.T) {
 	actual := ReadTestFile(t)
 	testFile := getTestFile(t)
@@ -282,6 +284,7 @@ func TestSequence(t *testing.T) {
 	compareNodes(t, actual, expected)
 }
 
+// Test that mappings are decoded correctly.
 func TestMapping(t *testing.T) {
 	actual := ReadTestFile(t)
 	testFile := getTestFile(t)
@@ -311,6 +314,201 @@ func TestMapping(t *testing.T) {
 				Kind:     StringNode,
 				Tag:      "!!str",
 				Str:      "value 2",
+			},
+		},
+	}
+
+	compareNodes(t, actual, expected)
+}
+
+// Test that different scalar types are decoded correctly.
+func TestScalar(t *testing.T) {
+	actual := ReadTestFile(t)
+	testFile := getTestFile(t)
+
+	expected := &Node{
+		Name:     "test",
+		FileName: testFile,
+		Line:     1,
+		Column:   1,
+		Kind:     SequenceNode,
+		Tag:      "!!seq",
+		Sequence: []Node{
+			{
+				Name:     "test[0]",
+				FileName: testFile,
+				Line:     1,
+				Column:   3,
+				Kind:     BooleanNode,
+				Tag:      "!!bool",
+				Str:      "true",
+				Bool:     true,
+			},
+			{
+				Name:     "test[1]",
+				FileName: testFile,
+				Line:     2,
+				Column:   3,
+				Kind:     BooleanNode,
+				Tag:      "!!bool",
+				Str:      "false",
+				Bool:     false,
+			},
+			{
+				Name:     "test[2]",
+				FileName: testFile,
+				Line:     3,
+				Column:   3,
+				Kind:     BooleanNode,
+				Tag:      "!!bool",
+				Str:      "False",
+				Bool:     false,
+			},
+			{
+				Name:     "test[3]",
+				FileName: testFile,
+				Line:     4,
+				Column:   3,
+				Kind:     BooleanNode,
+				Tag:      "!!bool",
+				Str:      "True",
+				Bool:     true,
+			},
+			{
+				Name:     "test[4]",
+				FileName: testFile,
+				Line:     5,
+				Column:   3,
+				Kind:     IntegerNode,
+				Tag:      "!!int",
+				Str:      "0",
+				Int:      0,
+			},
+			{
+				Name:     "test[5]",
+				FileName: testFile,
+				Line:     6,
+				Column:   3,
+				Kind:     IntegerNode,
+				Tag:      "!!int",
+				Str:      "1",
+				Int:      1,
+			},
+			{
+				Name:     "test[6]",
+				FileName: testFile,
+				Line:     7,
+				Column:   3,
+				Kind:     IntegerNode,
+				Tag:      "!!int",
+				Str:      "+1",
+				Int:      1,
+			},
+			{
+				Name:     "test[7]",
+				FileName: testFile,
+				Comment:  "# largest int64",
+				Line:     8,
+				Column:   3,
+				Kind:     IntegerNode,
+				Tag:      "!!int",
+				Str:      "9223372036854775807",
+				Int:      9223372036854775807,
+			},
+			{
+				Name:     "test[8]",
+				FileName: testFile,
+				Comment:  "# smallest int64",
+				Line:     9,
+				Column:   3,
+				Kind:     IntegerNode,
+				Tag:      "!!int",
+				Str:      "-9223372036854775808",
+				Int:      -9223372036854775808,
+			},
+			{
+				Name:     "test[9]",
+				FileName: testFile,
+				Comment:  "# binary",
+				Line:     10,
+				Column:   3,
+				Kind:     IntegerNode,
+				Tag:      "!!int",
+				Str:      "0b1101",
+				Int:      0b1101,
+			},
+			{
+				Name:     "test[10]",
+				FileName: testFile,
+				Comment:  "# octal",
+				Line:     11,
+				Column:   3,
+				Kind:     IntegerNode,
+				Tag:      "!!int",
+				Str:      "0o14",
+				Int:      0o14,
+			},
+			{
+				Name:     "test[11]",
+				FileName: testFile,
+				Comment:  "# hex",
+				Line:     12,
+				Column:   3,
+				Kind:     IntegerNode,
+				Tag:      "!!int",
+				Str:      "0xFF",
+				Int:      0xFF,
+			},
+			{
+				Name:     "test[12]",
+				FileName: testFile,
+				Comment:  "# Pi",
+				Line:     13,
+				Column:   3,
+				Kind:     FloatNode,
+				Tag:      "!!float",
+				Str:      "3.14159",
+				Float:    3.14159,
+			},
+			{
+				Name:     "test[13]",
+				FileName: testFile,
+				Comment:  "# Avogadro",
+				Line:     14,
+				Column:   3,
+				Kind:     FloatNode,
+				Tag:      "!!float",
+				Str:      "6.022e+23",
+				Float:    6.022e+23,
+			},
+			{
+				Name:     "test[14]",
+				FileName: testFile,
+				Comment:  "# null",
+				Line:     15,
+				Column:   3,
+				Kind:     NullNode,
+				Tag:      "!!null",
+				Str:      "~",
+			},
+			{
+				Name:     "test[15]",
+				FileName: testFile,
+				Line:     16,
+				Column:   3,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "A string",
+			},
+			{
+				Name:     "test[16]",
+				FileName: testFile,
+				Comment:  "# Also a string",
+				Line:     17,
+				Column:   3,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "123",
 			},
 		},
 	}
