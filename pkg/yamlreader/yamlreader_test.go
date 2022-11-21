@@ -7,13 +7,17 @@ import (
 	"testing"
 )
 
-func getTestFile(t *testing.T) string {
+func getTestPath(t *testing.T) string {
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	return filepath.Join(cwd, "test", t.Name()+".yaml")
+	return filepath.Join(cwd, "test", t.Name())
+}
+
+func getTestFile(t *testing.T) string {
+	return getTestPath(t) + ".yaml"
 }
 
 func compareNodes(t *testing.T, actual, expected *Node) {
@@ -80,18 +84,95 @@ func compareNodes(t *testing.T, actual, expected *Node) {
 	}
 }
 
-func ReadTestFile(t *testing.T) *Node {
-	testFile := getTestFile(t)
-
-	actual := &Node{
-		Name: "test",
-	}
-	err := actual.ReadFile(testFile)
+func ReadTestDirectory(t *testing.T) *Node {
+	node := Node{}
+	err := node.ReadDirectory(getTestPath(t))
 	if err != nil {
 		t.Fatal(err)
 	}
+	return &node
+}
 
-	return actual
+func ReadTestFile(t *testing.T) *Node {
+	node := Node{}
+	err := node.ReadFile(getTestFile(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &node
+}
+
+// Test reading a nested directory structure.
+func TestReadDirectory(t *testing.T) {
+	actual := ReadTestDirectory(t)
+	testPath := getTestPath(t)
+
+	expected := &Node{
+		Name:     t.Name(),
+		FileName: testPath,
+		Kind:     MappingNode,
+		Mapping: map[string]Node{
+			"nested": {
+				Name:     t.Name() + ".nested",
+				FileName: testPath + "/nested",
+				Kind:     MappingNode,
+				Mapping: map[string]Node{
+					"inner": {
+						Name:     t.Name() + ".nested.inner",
+						FileName: testPath + "/nested/inner",
+						Kind:     MappingNode,
+						Mapping: map[string]Node{
+							"deep": {
+								Name:     t.Name() + ".nested.inner.deep",
+								FileName: testPath + "/nested/inner/deep.yaml",
+								Line:     1,
+								Column:   1,
+								Kind:     StringNode,
+								Tag:      "!!str",
+								Str:      "Deep nested content",
+							},
+						},
+					},
+				},
+			},
+			"shallow": {
+				Name:     t.Name() + ".shallow",
+				FileName: testPath + "/shallow",
+				Kind:     MappingNode,
+				Mapping: map[string]Node{
+					"shallow": {
+						Name:     t.Name() + ".shallow.shallow",
+						FileName: testPath + "/shallow/shallow.yaml",
+						Line:     1,
+						Column:   1,
+						Kind:     StringNode,
+						Tag:      "!!str",
+						Str:      "Shallow content",
+					},
+				},
+			},
+			"library": {
+				Name:     t.Name() + ".library",
+				FileName: testPath + "/library.yaml",
+				Line:     1,
+				Column:   1,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "Library content",
+			},
+			"main": {
+				Name:     t.Name() + ".main",
+				FileName: testPath + "/main.yaml",
+				Line:     1,
+				Column:   1,
+				Kind:     StringNode,
+				Tag:      "!!str",
+				Str:      "Main content",
+			},
+		},
+	}
+
+	compareNodes(t, actual, expected)
 }
 
 // Test that reading a missing file returns an error.
@@ -115,7 +196,7 @@ func TestReadFile(t *testing.T) {
 	actual := ReadTestFile(t)
 
 	expected := &Node{
-		Name:     "test",
+		Name:     t.Name(),
 		FileName: getTestFile(t),
 		Line:     2,
 		Column:   1,
@@ -133,7 +214,7 @@ func TestReadFileNull(t *testing.T) {
 	actual := ReadTestFile(t)
 
 	expected := &Node{
-		Name:     "test",
+		Name:     t.Name(),
 		FileName: getTestFile(t),
 		Line:     1,
 		Column:   1,
@@ -150,7 +231,7 @@ func TestReadFileEmpty(t *testing.T) {
 	actual := ReadTestFile(t)
 
 	expected := &Node{
-		Name:     "test",
+		Name:     t.Name(),
 		FileName: getTestFile(t),
 		Kind:     NullNode,
 		Tag:      "!!null",
@@ -165,13 +246,13 @@ func TestReadFileMultipleDocuments(t *testing.T) {
 	testFile := getTestFile(t)
 
 	expected := &Node{
-		Name:     "test",
+		Name:     t.Name(),
 		FileName: testFile,
 		Kind:     SequenceNode,
 		Tag:      "!!seq",
 		Sequence: []Node{
 			{
-				Name:     "test[0]",
+				Name:     t.Name() + "[0]",
 				FileName: testFile,
 				Line:     2,
 				Column:   1,
@@ -180,7 +261,7 @@ func TestReadFileMultipleDocuments(t *testing.T) {
 				Str:      "Document one",
 			},
 			{
-				Name:     "test[1]",
+				Name:     t.Name() + "[1]",
 				FileName: testFile,
 				Line:     4,
 				Column:   1,
@@ -200,7 +281,7 @@ func TestReadFileAlias(t *testing.T) {
 	testFile := getTestFile(t)
 
 	expected := &Node{
-		Name:     "test",
+		Name:     t.Name(),
 		FileName: testFile,
 		Line:     1,
 		Column:   1,
@@ -208,7 +289,7 @@ func TestReadFileAlias(t *testing.T) {
 		Tag:      "!!seq",
 		Sequence: []Node{
 			{
-				Name:     "test[0]",
+				Name:     t.Name() + "[0]",
 				FileName: testFile,
 				Line:     1,
 				Column:   3,
@@ -218,7 +299,7 @@ func TestReadFileAlias(t *testing.T) {
 				Str:      "Thing to be copied.",
 			},
 			{
-				Name:     "test[1]",
+				Name:     t.Name() + "[1]",
 				FileName: testFile,
 				Line:     2,
 				Column:   3,
@@ -253,7 +334,7 @@ func TestSequence(t *testing.T) {
 	testFile := getTestFile(t)
 
 	expected := &Node{
-		Name:     "test",
+		Name:     t.Name(),
 		FileName: testFile,
 		Line:     1,
 		Column:   1,
@@ -261,7 +342,7 @@ func TestSequence(t *testing.T) {
 		Tag:      "!!seq",
 		Sequence: []Node{
 			{
-				Name:     "test[0]",
+				Name:     t.Name() + "[0]",
 				FileName: testFile,
 				Line:     1,
 				Column:   3,
@@ -270,7 +351,7 @@ func TestSequence(t *testing.T) {
 				Str:      "Item 1",
 			},
 			{
-				Name:     "test[1]",
+				Name:     t.Name() + "[1]",
 				FileName: testFile,
 				Line:     2,
 				Column:   3,
@@ -290,7 +371,7 @@ func TestMapping(t *testing.T) {
 	testFile := getTestFile(t)
 
 	expected := &Node{
-		Name:     "test",
+		Name:     t.Name(),
 		FileName: testFile,
 		Line:     1,
 		Column:   1,
@@ -298,7 +379,7 @@ func TestMapping(t *testing.T) {
 		Tag:      "!!map",
 		Mapping: map[string]Node{
 			"key 1": {
-				Name:     "test.key 1",
+				Name:     t.Name() + ".key 1",
 				FileName: testFile,
 				Line:     1,
 				Column:   8,
@@ -307,7 +388,7 @@ func TestMapping(t *testing.T) {
 				Str:      "value 1",
 			},
 			"key 2": {
-				Name:     "test.key 2",
+				Name:     t.Name() + ".key 2",
 				FileName: testFile,
 				Line:     2,
 				Column:   8,
@@ -327,7 +408,7 @@ func TestScalar(t *testing.T) {
 	testFile := getTestFile(t)
 
 	expected := &Node{
-		Name:     "test",
+		Name:     "TestScalar",
 		FileName: testFile,
 		Line:     1,
 		Column:   1,
@@ -335,7 +416,7 @@ func TestScalar(t *testing.T) {
 		Tag:      "!!seq",
 		Sequence: []Node{
 			{
-				Name:     "test[0]",
+				Name:     "TestScalar[0]",
 				FileName: testFile,
 				Line:     1,
 				Column:   3,
@@ -345,7 +426,7 @@ func TestScalar(t *testing.T) {
 				Bool:     true,
 			},
 			{
-				Name:     "test[1]",
+				Name:     "TestScalar[1]",
 				FileName: testFile,
 				Line:     2,
 				Column:   3,
@@ -355,7 +436,7 @@ func TestScalar(t *testing.T) {
 				Bool:     false,
 			},
 			{
-				Name:     "test[2]",
+				Name:     "TestScalar[2]",
 				FileName: testFile,
 				Line:     3,
 				Column:   3,
@@ -365,7 +446,7 @@ func TestScalar(t *testing.T) {
 				Bool:     false,
 			},
 			{
-				Name:     "test[3]",
+				Name:     "TestScalar[3]",
 				FileName: testFile,
 				Line:     4,
 				Column:   3,
@@ -375,7 +456,7 @@ func TestScalar(t *testing.T) {
 				Bool:     true,
 			},
 			{
-				Name:     "test[4]",
+				Name:     "TestScalar[4]",
 				FileName: testFile,
 				Line:     5,
 				Column:   3,
@@ -385,7 +466,7 @@ func TestScalar(t *testing.T) {
 				Int:      0,
 			},
 			{
-				Name:     "test[5]",
+				Name:     "TestScalar[5]",
 				FileName: testFile,
 				Line:     6,
 				Column:   3,
@@ -395,7 +476,7 @@ func TestScalar(t *testing.T) {
 				Int:      1,
 			},
 			{
-				Name:     "test[6]",
+				Name:     "TestScalar[6]",
 				FileName: testFile,
 				Line:     7,
 				Column:   3,
@@ -405,7 +486,7 @@ func TestScalar(t *testing.T) {
 				Int:      1,
 			},
 			{
-				Name:     "test[7]",
+				Name:     "TestScalar[7]",
 				FileName: testFile,
 				Comment:  "# largest int64",
 				Line:     8,
@@ -416,7 +497,7 @@ func TestScalar(t *testing.T) {
 				Int:      9223372036854775807,
 			},
 			{
-				Name:     "test[8]",
+				Name:     "TestScalar[8]",
 				FileName: testFile,
 				Comment:  "# smallest int64",
 				Line:     9,
@@ -427,7 +508,7 @@ func TestScalar(t *testing.T) {
 				Int:      -9223372036854775808,
 			},
 			{
-				Name:     "test[9]",
+				Name:     "TestScalar[9]",
 				FileName: testFile,
 				Comment:  "# binary",
 				Line:     10,
@@ -438,7 +519,7 @@ func TestScalar(t *testing.T) {
 				Int:      0b1101,
 			},
 			{
-				Name:     "test[10]",
+				Name:     "TestScalar[10]",
 				FileName: testFile,
 				Comment:  "# octal",
 				Line:     11,
@@ -449,7 +530,7 @@ func TestScalar(t *testing.T) {
 				Int:      0o14,
 			},
 			{
-				Name:     "test[11]",
+				Name:     "TestScalar[11]",
 				FileName: testFile,
 				Comment:  "# hex",
 				Line:     12,
@@ -460,7 +541,7 @@ func TestScalar(t *testing.T) {
 				Int:      0xFF,
 			},
 			{
-				Name:     "test[12]",
+				Name:     "TestScalar[12]",
 				FileName: testFile,
 				Comment:  "# Pi",
 				Line:     13,
@@ -471,7 +552,7 @@ func TestScalar(t *testing.T) {
 				Float:    3.14159,
 			},
 			{
-				Name:     "test[13]",
+				Name:     "TestScalar[13]",
 				FileName: testFile,
 				Comment:  "# Avogadro",
 				Line:     14,
@@ -482,7 +563,7 @@ func TestScalar(t *testing.T) {
 				Float:    6.022e+23,
 			},
 			{
-				Name:     "test[14]",
+				Name:     "TestScalar[14]",
 				FileName: testFile,
 				Comment:  "# null",
 				Line:     15,
@@ -492,7 +573,7 @@ func TestScalar(t *testing.T) {
 				Str:      "~",
 			},
 			{
-				Name:     "test[15]",
+				Name:     "TestScalar[15]",
 				FileName: testFile,
 				Line:     16,
 				Column:   3,
@@ -501,7 +582,7 @@ func TestScalar(t *testing.T) {
 				Str:      "A string",
 			},
 			{
-				Name:     "test[16]",
+				Name:     "TestScalar[16]",
 				FileName: testFile,
 				Comment:  "# Also a string",
 				Line:     17,
@@ -511,7 +592,7 @@ func TestScalar(t *testing.T) {
 				Str:      "123",
 			},
 			{
-				Name:     "test[17]",
+				Name:     "TestScalar[17]",
 				FileName: testFile,
 				Comment:  "# overflow -> float",
 				Line:     18,
@@ -522,7 +603,7 @@ func TestScalar(t *testing.T) {
 				Float:    -9223372036854775809,
 			},
 			{
-				Name:     "test[18]",
+				Name:     "TestScalar[18]",
 				FileName: testFile,
 				Comment:  "# overflow -> float",
 				Line:     19,
@@ -533,7 +614,7 @@ func TestScalar(t *testing.T) {
 				Float:    9223372036854775808,
 			},
 			{
-				Name:     "test[19]",
+				Name:     "TestScalar[19]",
 				FileName: testFile,
 				Comment:  "# largest uint64 -> float",
 				Line:     20,
@@ -544,7 +625,7 @@ func TestScalar(t *testing.T) {
 				Float:    18446744073709551615,
 			},
 			{
-				Name:     "test[20]",
+				Name:     "TestScalar[20]",
 				FileName: testFile,
 				Comment:  "# one greater -> float",
 				Line:     21,
