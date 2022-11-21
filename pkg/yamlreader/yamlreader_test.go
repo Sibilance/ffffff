@@ -73,7 +73,11 @@ func compareNodes(t *testing.T, actual, expected *Node) {
 func TestReadFile(t *testing.T) {
 	testFile := getTestFile(t)
 
-	actual, err := ReadFile("test", testFile)
+	actual := &Node{
+		Name:     "test",
+		FileName: testFile,
+	}
+	err := actual.ReadFile(testFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +100,11 @@ func TestReadFile(t *testing.T) {
 func TestReadFileNull(t *testing.T) {
 	testFile := getTestFile(t)
 
-	actual, err := ReadFile("test", testFile)
+	actual := &Node{
+		Name:     "test",
+		FileName: testFile,
+	}
+	err := actual.ReadFile(testFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +126,11 @@ func TestReadFileNull(t *testing.T) {
 func TestReadFileEmpty(t *testing.T) {
 	testFile := getTestFile(t)
 
-	actual, err := ReadFile("test", testFile)
+	actual := &Node{
+		Name:     "test",
+		FileName: testFile,
+	}
+	err := actual.ReadFile(testFile)
 	if err != nil {
 		t.Fatal(err)
 	}
