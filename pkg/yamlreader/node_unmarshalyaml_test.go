@@ -35,7 +35,7 @@ func TestSequence(t *testing.T) {
 				Kind:     StringNode,
 				Tag:      "!!str",
 				Raw:      "Item 2",
-				Scalar:   StringScalar{Value: "Item 1"},
+				Scalar:   StringScalar{Value: "Item 2"},
 			},
 		},
 	}
@@ -74,7 +74,7 @@ func TestMapping(t *testing.T) {
 				Kind:     StringNode,
 				Tag:      "!!str",
 				Raw:      "value 2",
-				Scalar:   StringScalar{Value: "value 1"},
+				Scalar:   StringScalar{Value: "value 2"},
 			},
 		},
 	}
