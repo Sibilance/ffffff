@@ -1,0 +1,16 @@
+name: Run Tests
+run-name: ${{ github.actor }} is testing ${{ github.ref }} (${{ github.event_name }})
+on: 
+  - push
+  - pull_request
+jobs:
+  Run-Tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Run tests
+        run: |
+          cd ${{ github.workspace }}
+          ./test.sh
+      - run: echo "🍏 This job's status is ${{ job.status }}."
