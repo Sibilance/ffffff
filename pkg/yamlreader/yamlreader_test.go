@@ -67,20 +67,26 @@ func compareNodes(t *testing.T, actual, expected *Node) {
 		compareNodes(t, &innerActual, &innerExpected)
 	}
 
-	if actual.Bool != expected.Bool {
-		t.Fatalf("%s: expected Bool=%t, got %t", actual.Name, expected.Bool, actual.Bool)
+	if (actual.Value == nil) != (expected.Value == nil) {
+		t.Fatalf("%s: expected (Value == nil)=%t, got (Value == nil)=%t", actual.Name, expected.Value == nil, actual.Value == nil)
 	}
 
-	if actual.Int != expected.Int {
-		t.Fatalf("%s: expected Int=%d, got %d", actual.Name, expected.Int, actual.Int)
-	}
+	if actual.Value != nil {
+		if actual.Bool() != expected.Bool() {
+			t.Fatalf("%s: expected Bool=%t, got %t", actual.Name, expected.Bool(), actual.Bool())
+		}
 
-	if actual.Float != expected.Float {
-		t.Fatalf("%s: expected Float=%f, got %f", actual.Name, expected.Float, actual.Float)
-	}
+		if actual.Int() != expected.Int() {
+			t.Fatalf("%s: expected Int=%d, got %d", actual.Name, expected.Int(), actual.Int())
+		}
 
-	if actual.Str != expected.Str {
-		t.Fatalf("%s: expected Str=%s, got %s", actual.Name, expected.Str, actual.Str)
+		if actual.Float() != expected.Float() {
+			t.Fatalf("%s: expected Float=%f, got %f", actual.Name, expected.Float(), actual.Float())
+		}
+
+		if actual.Str() != expected.Str() {
+			t.Fatalf("%s: expected Str=%s, got %s", actual.Name, expected.Str(), actual.Str())
+		}
 	}
 }
 
@@ -111,16 +117,19 @@ func TestReadDirectory(t *testing.T) {
 		Name:     t.Name(),
 		FileName: testPath,
 		Kind:     MappingNode,
+		Tag:      "!!map",
 		Mapping: map[string]Node{
 			"nested": {
 				Name:     t.Name() + ".nested",
 				FileName: testPath + "/nested",
 				Kind:     MappingNode,
+				Tag:      "!!map",
 				Mapping: map[string]Node{
 					"inner": {
 						Name:     t.Name() + ".nested.inner",
 						FileName: testPath + "/nested/inner",
 						Kind:     MappingNode,
+						Tag:      "!!map",
 						Mapping: map[string]Node{
 							"deep": {
 								Name:     t.Name() + ".nested.inner.deep",
@@ -129,7 +138,8 @@ func TestReadDirectory(t *testing.T) {
 								Column:   1,
 								Kind:     StringNode,
 								Tag:      "!!str",
-								Str:      "Deep nested content",
+								Raw:      "Deep nested content",
+								Value:    StringValue{Value: "Deep nested content"},
 							},
 						},
 					},
@@ -139,6 +149,7 @@ func TestReadDirectory(t *testing.T) {
 				Name:     t.Name() + ".shallow",
 				FileName: testPath + "/shallow",
 				Kind:     MappingNode,
+				Tag:      "!!map",
 				Mapping: map[string]Node{
 					"shallow": {
 						Name:     t.Name() + ".shallow.shallow",
@@ -147,7 +158,8 @@ func TestReadDirectory(t *testing.T) {
 						Column:   1,
 						Kind:     StringNode,
 						Tag:      "!!str",
-						Str:      "Shallow content",
+						Raw:      "Shallow content",
+						Value:    StringValue{Value: "Shallow content"},
 					},
 				},
 			},
@@ -158,7 +170,8 @@ func TestReadDirectory(t *testing.T) {
 				Column:   1,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "Library content",
+				Raw:      "Library content",
+				Value:    StringValue{Value: "Library content"},
 			},
 			"main": {
 				Name:     t.Name() + ".main",
@@ -167,7 +180,8 @@ func TestReadDirectory(t *testing.T) {
 				Column:   1,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "Main content",
+				Raw:      "Main content",
+				Value:    StringValue{Value: "Main content"},
 			},
 		},
 	}
@@ -203,7 +217,8 @@ func TestReadFile(t *testing.T) {
 		Comment:  "# Head Comment\n\n# Line Comment",
 		Kind:     StringNode,
 		Tag:      "!!str",
-		Str:      "Hello World",
+		Raw:      "Hello World",
+		Value:    StringValue{Value: "Hello World"},
 	}
 
 	compareNodes(t, actual, expected)
@@ -220,7 +235,7 @@ func TestReadFileNull(t *testing.T) {
 		Column:   1,
 		Kind:     NullNode,
 		Tag:      "!!null",
-		Str:      "null",
+		Raw:      "null",
 	}
 
 	compareNodes(t, actual, expected)
@@ -258,7 +273,8 @@ func TestReadFileMultipleDocuments(t *testing.T) {
 				Column:   1,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "Document one",
+				Raw:      "Document one",
+				Value:    StringValue{Value: "Document one"},
 			},
 			{
 				Name:     t.Name() + "[1]",
@@ -267,7 +283,8 @@ func TestReadFileMultipleDocuments(t *testing.T) {
 				Column:   1,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "Document two",
+				Raw:      "Document two",
+				Value:    StringValue{Value: "Document two"},
 			},
 		},
 	}
@@ -296,7 +313,8 @@ func TestReadFileAlias(t *testing.T) {
 				Comment:  "# Comment 1",
 				Kind:     StringNode,
 				Tag:      "!MyTag",
-				Str:      "Thing to be copied.",
+				Raw:      "Thing to be copied.",
+				Value:    StringValue{Value: "Thing to be copied."},
 			},
 			{
 				Name:     t.Name() + "[1]",
@@ -306,7 +324,8 @@ func TestReadFileAlias(t *testing.T) {
 				Comment:  "# Comment 2",
 				Kind:     StringNode,
 				Tag:      "!MyTag",
-				Str:      "Thing to be copied.",
+				Raw:      "Thing to be copied.",
+				Value:    StringValue{Value: "Thing to be copied."},
 			},
 		},
 	}
@@ -348,7 +367,8 @@ func TestSequence(t *testing.T) {
 				Column:   3,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "Item 1",
+				Raw:      "Item 1",
+				Value:    StringValue{Value: "Item 1"},
 			},
 			{
 				Name:     t.Name() + "[1]",
@@ -357,7 +377,8 @@ func TestSequence(t *testing.T) {
 				Column:   3,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "Item 2",
+				Raw:      "Item 2",
+				Value:    StringValue{Value: "Item 1"},
 			},
 		},
 	}
@@ -385,7 +406,8 @@ func TestMapping(t *testing.T) {
 				Column:   8,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "value 1",
+				Raw:      "value 1",
+				Value:    StringValue{Value: "value 1"},
 			},
 			"key 2": {
 				Name:     t.Name() + ".key 2",
@@ -394,7 +416,8 @@ func TestMapping(t *testing.T) {
 				Column:   8,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "value 2",
+				Raw:      "value 2",
+				Value:    StringValue{Value: "value 1"},
 			},
 		},
 	}
@@ -422,8 +445,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     BooleanNode,
 				Tag:      "!!bool",
-				Str:      "true",
-				Bool:     true,
+				Raw:      "true",
+				Value:    BoolValue{Value: true},
 			},
 			{
 				Name:     "TestScalar[1]",
@@ -432,8 +455,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     BooleanNode,
 				Tag:      "!!bool",
-				Str:      "false",
-				Bool:     false,
+				Raw:      "false",
+				Value:    BoolValue{Value: false},
 			},
 			{
 				Name:     "TestScalar[2]",
@@ -442,8 +465,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     BooleanNode,
 				Tag:      "!!bool",
-				Str:      "False",
-				Bool:     false,
+				Raw:      "False",
+				Value:    BoolValue{Value: false},
 			},
 			{
 				Name:     "TestScalar[3]",
@@ -452,8 +475,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     BooleanNode,
 				Tag:      "!!bool",
-				Str:      "True",
-				Bool:     true,
+				Raw:      "True",
+				Value:    BoolValue{Value: true},
 			},
 			{
 				Name:     "TestScalar[4]",
@@ -462,8 +485,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     IntegerNode,
 				Tag:      "!!int",
-				Str:      "0",
-				Int:      0,
+				Raw:      "0",
+				Value:    IntValue{Value: 0},
 			},
 			{
 				Name:     "TestScalar[5]",
@@ -472,8 +495,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     IntegerNode,
 				Tag:      "!!int",
-				Str:      "1",
-				Int:      1,
+				Raw:      "1",
+				Value:    IntValue{Value: 1},
 			},
 			{
 				Name:     "TestScalar[6]",
@@ -482,8 +505,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     IntegerNode,
 				Tag:      "!!int",
-				Str:      "+1",
-				Int:      1,
+				Raw:      "+1",
+				Value:    IntValue{Value: 1},
 			},
 			{
 				Name:     "TestScalar[7]",
@@ -493,8 +516,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     IntegerNode,
 				Tag:      "!!int",
-				Str:      "9223372036854775807",
-				Int:      9223372036854775807,
+				Raw:      "9223372036854775807",
+				Value:    IntValue{Value: 9223372036854775807},
 			},
 			{
 				Name:     "TestScalar[8]",
@@ -504,8 +527,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     IntegerNode,
 				Tag:      "!!int",
-				Str:      "-9223372036854775808",
-				Int:      -9223372036854775808,
+				Raw:      "-9223372036854775808",
+				Value:    IntValue{Value: -9223372036854775808},
 			},
 			{
 				Name:     "TestScalar[9]",
@@ -515,8 +538,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     IntegerNode,
 				Tag:      "!!int",
-				Str:      "0b1101",
-				Int:      0b1101,
+				Raw:      "0b1101",
+				Value:    IntValue{Value: 0b1101},
 			},
 			{
 				Name:     "TestScalar[10]",
@@ -526,8 +549,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     IntegerNode,
 				Tag:      "!!int",
-				Str:      "0o14",
-				Int:      0o14,
+				Raw:      "0o14",
+				Value:    IntValue{Value: 0o14},
 			},
 			{
 				Name:     "TestScalar[11]",
@@ -537,8 +560,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     IntegerNode,
 				Tag:      "!!int",
-				Str:      "0xFF",
-				Int:      0xFF,
+				Raw:      "0xFF",
+				Value:    IntValue{Value: 0xFF},
 			},
 			{
 				Name:     "TestScalar[12]",
@@ -548,8 +571,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     FloatNode,
 				Tag:      "!!float",
-				Str:      "3.14159",
-				Float:    3.14159,
+				Raw:      "3.14159",
+				Value:    FloatValue{Value: 3.14159},
 			},
 			{
 				Name:     "TestScalar[13]",
@@ -559,8 +582,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     FloatNode,
 				Tag:      "!!float",
-				Str:      "6.022e+23",
-				Float:    6.022e+23,
+				Raw:      "6.022e+23",
+				Value:    FloatValue{Value: 6.022e+23},
 			},
 			{
 				Name:     "TestScalar[14]",
@@ -570,7 +593,7 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     NullNode,
 				Tag:      "!!null",
-				Str:      "~",
+				Raw:      "~",
 			},
 			{
 				Name:     "TestScalar[15]",
@@ -579,7 +602,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "A string",
+				Raw:      "A string",
+				Value:    StringValue{Value: "A string"},
 			},
 			{
 				Name:     "TestScalar[16]",
@@ -589,7 +613,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     StringNode,
 				Tag:      "!!str",
-				Str:      "123",
+				Raw:      "123",
+				Value:    StringValue{Value: "123"},
 			},
 			{
 				Name:     "TestScalar[17]",
@@ -599,8 +624,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     FloatNode,
 				Tag:      "!!float",
-				Str:      "-9223372036854775809",
-				Float:    -9223372036854775809,
+				Raw:      "-9223372036854775809",
+				Value:    FloatValue{Value: -9223372036854775809},
 			},
 			{
 				Name:     "TestScalar[18]",
@@ -610,8 +635,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     FloatNode,
 				Tag:      "!!float",
-				Str:      "9223372036854775808",
-				Float:    9223372036854775808,
+				Raw:      "9223372036854775808",
+				Value:    FloatValue{Value: 9223372036854775808},
 			},
 			{
 				Name:     "TestScalar[19]",
@@ -621,8 +646,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     FloatNode,
 				Tag:      "!!float",
-				Str:      "18446744073709551615",
-				Float:    18446744073709551615,
+				Raw:      "18446744073709551615",
+				Value:    FloatValue{Value: 18446744073709551615},
 			},
 			{
 				Name:     "TestScalar[20]",
@@ -632,8 +657,8 @@ func TestScalar(t *testing.T) {
 				Column:   3,
 				Kind:     FloatNode,
 				Tag:      "!!float",
-				Str:      "18446744073709551616",
-				Float:    18446744073709551616,
+				Raw:      "18446744073709551616",
+				Value:    FloatValue{Value: 18446744073709551616},
 			},
 		},
 	}

@@ -53,20 +53,79 @@ func (kind Kind) String() string {
 	return "unknown"
 }
 
+type Value interface {
+	Bool() bool
+	Int() int64
+	Float() float64
+	Str() string
+}
+
+type DefaultValue struct{}
+
+func (v DefaultValue) Bool() (r bool) {
+	return
+}
+
+func (v DefaultValue) Int() (r int64) {
+	return
+}
+
+func (v DefaultValue) Float() (r float64) {
+	return
+}
+
+func (v DefaultValue) Str() (r string) {
+	return
+}
+
+type BoolValue struct {
+	DefaultValue
+	Value bool
+}
+
+func (v BoolValue) Bool() bool {
+	return v.Value
+}
+
+type IntValue struct {
+	DefaultValue
+	Value int64
+}
+
+func (v IntValue) Int() int64 {
+	return v.Value
+}
+
+type FloatValue struct {
+	DefaultValue
+	Value float64
+}
+
+func (v FloatValue) Float() float64 {
+	return v.Value
+}
+
+type StringValue struct {
+	DefaultValue
+	Value string
+}
+
+func (v StringValue) String() string {
+	return v.Value
+}
+
 type Node struct {
 	Name     string
 	FileName string
 	Line     int
 	Column   int
 	Comment  string
+	Raw      string
 	Kind     Kind
 	Tag      string
 	Sequence []Node
 	Mapping  map[string]Node
-	Bool     bool
-	Int      int64
-	Float    float64
-	Str      string
+	Value
 }
 
 func (n *Node) String() string {
@@ -76,6 +135,7 @@ func (n *Node) String() string {
 func (n *Node) ReadDirectory(dirName string) error {
 	n.FileName = dirName
 	n.Kind = MappingNode
+	n.Tag = MapTag
 	n.Mapping = make(map[string]Node)
 
 	if n.Name == "" {
@@ -247,11 +307,13 @@ func (n *Node) unmarshalYAML(yamlNode *yaml.Node, recursionDetection map[*yaml.N
 		}
 
 	case yaml.ScalarNode:
-		n.Str = yamlNode.Value
+		n.Raw = yamlNode.Value
 		switch n.Tag {
 		case BoolTag:
 			n.Kind = BooleanNode
-			yamlNode.Decode(&n.Bool)
+			value := BoolValue{}
+			yamlNode.Decode(&value.Value)
+			n.Value = value
 		case IntTag:
 			n.Kind = IntegerNode
 			// We have to check for overflows of positive integers because the yaml
@@ -261,17 +323,24 @@ func (n *Node) unmarshalYAML(yamlNode *yaml.Node, recursionDetection map[*yaml.N
 			if overflowCheck > ^uint64(0)>>1 {
 				n.Kind = FloatNode
 				n.Tag = FloatTag
-				yamlNode.Decode(&n.Float)
+				value := FloatValue{}
+				yamlNode.Decode(&value.Value)
+				n.Value = value
 			} else {
-				yamlNode.Decode(&n.Int)
+				value := IntValue{}
+				yamlNode.Decode(&value.Value)
+				n.Value = value
 			}
 		case FloatTag:
 			n.Kind = FloatNode
-			yamlNode.Decode(&n.Float)
+			value := FloatValue{}
+			yamlNode.Decode(&value.Value)
+			n.Value = value
 		case NullTag:
 			n.Kind = NullNode
 		default:
 			n.Kind = StringNode
+			n.Value = StringValue{Value: n.Raw}
 		}
 
 	default:
