@@ -1,6 +1,6 @@
 package yamlreader
 
-type Kind int8
+type Kind uint8
 
 const (
 	UndefinedNode Kind = iota
