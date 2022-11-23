@@ -336,7 +336,6 @@ func TestReadFileAlias(t *testing.T) {
 // Test that recursive aliases are detected and return an error.
 func TestReadFileRecursiveAlias(t *testing.T) {
 	testFile := getTestFile(t)
-	t.Fail()
 
 	actual := &Node{}
 	err := actual.ReadFile(testFile)
