@@ -120,11 +120,11 @@ type Node struct {
 	Line     int
 	Column   int
 	Comment  string
+	Raw      string
 	Kind     Kind
 	Tag      string
 	Sequence []Node
 	Mapping  map[string]Node
-	Raw      string
 	Value
 }
 
@@ -135,6 +135,7 @@ func (n *Node) String() string {
 func (n *Node) ReadDirectory(dirName string) error {
 	n.FileName = dirName
 	n.Kind = MappingNode
+	n.Tag = MapTag
 	n.Mapping = make(map[string]Node)
 
 	if n.Name == "" {

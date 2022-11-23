@@ -117,16 +117,19 @@ func TestReadDirectory(t *testing.T) {
 		Name:     t.Name(),
 		FileName: testPath,
 		Kind:     MappingNode,
+		Tag:      "!!map",
 		Mapping: map[string]Node{
 			"nested": {
 				Name:     t.Name() + ".nested",
 				FileName: testPath + "/nested",
 				Kind:     MappingNode,
+				Tag:      "!!map",
 				Mapping: map[string]Node{
 					"inner": {
 						Name:     t.Name() + ".nested.inner",
 						FileName: testPath + "/nested/inner",
 						Kind:     MappingNode,
+						Tag:      "!!map",
 						Mapping: map[string]Node{
 							"deep": {
 								Name:     t.Name() + ".nested.inner.deep",
@@ -146,6 +149,7 @@ func TestReadDirectory(t *testing.T) {
 				Name:     t.Name() + ".shallow",
 				FileName: testPath + "/shallow",
 				Kind:     MappingNode,
+				Tag:      "!!map",
 				Mapping: map[string]Node{
 					"shallow": {
 						Name:     t.Name() + ".shallow.shallow",
