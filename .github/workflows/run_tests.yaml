@@ -1,8 +1,8 @@
-name: Run Tests
+name: Unit Tests
 run-name: ${{ github.actor }} is testing ${{ github.ref }}
 on: [push]
 jobs:
-  Run-Tests:
+  Unit Tests:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
