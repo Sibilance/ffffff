@@ -5,6 +5,9 @@ on:
   - pull_request
 jobs:
   Run-Tests:
+    # Run tests on every push, and after landing.
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -13,4 +16,3 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           ./test.sh
-      - run: echo "🍏 This job's status is ${{ job.status }}."
