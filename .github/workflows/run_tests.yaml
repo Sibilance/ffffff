@@ -1,13 +1,8 @@
 name: Run Tests
-run-name: ${{ github.actor }} is testing ${{ github.ref }} (${{ github.event_name }})
-on: 
-  - push
-  - pull_request
+run-name: ${{ github.actor }} is testing ${{ github.ref }}
+on: [push]
 jobs:
   Run-Tests:
-    # Run tests on every push, and after landing.
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
-
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
