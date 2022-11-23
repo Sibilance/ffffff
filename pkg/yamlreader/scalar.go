@@ -53,10 +53,10 @@ func (v FloatScalar) Float() float64 {
 }
 
 type StringScalar struct {
-	Value string
 	DefaultScalar
+	Value string
 }
 
-func (v StringScalar) String() string {
+func (v StringScalar) Str() string {
 	return v.Value
 }
