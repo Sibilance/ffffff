@@ -1,1 +1,1 @@
-# ffffff
+# ffffff ![Unit Tests](https://github.com/Sibilance/ffffff/actions/workflows/run_tests.yaml/badge.svg)
