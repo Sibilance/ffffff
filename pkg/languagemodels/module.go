@@ -6,5 +6,5 @@ type Module struct {
 	Imports   map[string]*Module
 	Classes   map[string]Class
 	Functions map[string]Function
-	Constants map[string]Value
+	Constants map[string]Expression
 }
