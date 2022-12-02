@@ -1,4 +1,4 @@
-package languagemodels
+package ast
 
 type Class struct {
 	Name string
