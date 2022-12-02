@@ -1,4 +1,4 @@
-package languagemodels
+package ast
 
 type CodeBlock struct {
 	Name string

@@ -1,4 +1,4 @@
-package languagemodels
+package ast
 
 type Expression interface{}
 

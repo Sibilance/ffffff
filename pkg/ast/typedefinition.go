@@ -1,3 +1,3 @@
-package languagemodels
+package ast
 
 type TypeDefinition struct{}
