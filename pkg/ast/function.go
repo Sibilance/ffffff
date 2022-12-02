@@ -1,9 +1,11 @@
 package ast
 
 type Function struct {
+	AstNode
+
 	Name string
 
-	PositionalArguments []TypeDefinition
+	PositionalArguments map[string]TypeDefinition
 	KeywordArguments    map[string]TypeDefinition
 	ReturnType          TypeDefinition
 

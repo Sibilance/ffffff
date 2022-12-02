@@ -1,9 +1,10 @@
 package ast
 
 type Module struct {
-	Name string
+	AstNode
 
-	Imports   map[string]string
+	Name      string
+	Imports   map[string]Import
 	Classes   map[string]Class
 	Functions map[string]Function
 	Constants map[string]Expression

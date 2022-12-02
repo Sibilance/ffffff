@@ -1,3 +1,7 @@
 package ast
 
-type TypeDefinition struct{}
+type TypeDefinition struct {
+	AstNode
+
+	Type Expression
+}

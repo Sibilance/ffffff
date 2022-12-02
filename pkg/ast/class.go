@@ -1,8 +1,9 @@
 package ast
 
 type Class struct {
-	Name string
+	AstNode
 
-	Methods map[string]Function
+	Name    string
 	Fields  map[string]TypeDefinition
+	Methods map[string]Function
 }
