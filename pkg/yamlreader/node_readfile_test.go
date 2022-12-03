@@ -30,7 +30,7 @@ func TestReadFile(t *testing.T) {
 		FileName: getTestFile(t),
 		Line:     2,
 		Column:   1,
-		Comment:  "# Head Comment\n\n# Line Comment",
+		Comment:  "# Head Comment\n# Line Comment",
 		Kind:     StringNode,
 		Tag:      "!!str",
 		Raw:      "Hello World",
