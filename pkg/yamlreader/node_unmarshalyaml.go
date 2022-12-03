@@ -16,7 +16,7 @@ func (n *Node) unmarshalYAML(yamlNode *yaml.Node, recursionDetection map[*yaml.N
 	n.Tag = yamlNode.ShortTag()
 	n.Line = yamlNode.Line
 	n.Column = yamlNode.Column
-	n.Comment = strings.Trim(yamlNode.HeadComment+"\n\n"+yamlNode.LineComment, "\n")
+	n.Comment = strings.Trim(yamlNode.HeadComment+"\n"+yamlNode.LineComment, "\n")
 
 	switch yamlNode.Kind {
 	case yaml.DocumentNode:
