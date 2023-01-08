@@ -3,43 +3,49 @@ package ast
 type Statement interface{}
 
 type BreakStatement struct {
-	AstNode
+	ASTNode
+
+	Label string
 }
 
 type ContinueStatement struct {
-	AstNode
+	ASTNode
+
+	Label string
 }
 
 type ExpressionStatement struct {
-	AstNode
+	ASTNode
 
 	Expression Expression
 }
 
 type ForLoopStatement struct {
-	AstNode
+	ASTNode
 
-	Target   LValue
+	Label    string
+	Target   VariableExpression
 	Iterable Expression
 	Body     CodeBlock
+	Else     CodeBlock
 }
 
 type IfStatement struct {
-	AstNode
+	ASTNode
 
 	Conditionals []IfStatementConditional
 	Else         CodeBlock
 }
 
 type IfStatementConditional struct {
-	AstNode
+	ASTNode
 
 	If   Expression
 	Then CodeBlock
 }
 
 type LetStatement struct {
-	AstNode
+	ASTNode
 
 	VariableName string
 	Type         TypeDefinition
@@ -47,13 +53,13 @@ type LetStatement struct {
 }
 
 type ReturnStatement struct {
-	AstNode
+	ASTNode
 
 	Value Expression
 }
 
 type SwitchStatement struct {
-	AstNode
+	ASTNode
 
 	InputValue Expression
 	Cases      []SwitchStatementCase
@@ -61,20 +67,20 @@ type SwitchStatement struct {
 }
 
 type SwitchStatementCase struct {
-	AstNode
+	ASTNode
 
 	ComparisonValue Expression
 	Then            CodeBlock
 }
 
 type ThrowStatement struct {
-	AstNode
+	ASTNode
 
 	Value Expression
 }
 
 type TryStatement struct {
-	AstNode
+	ASTNode
 
 	Body    CodeBlock
 	Catches []TryStatementCatch
@@ -83,24 +89,25 @@ type TryStatement struct {
 }
 
 type TryStatementCatch struct {
-	AstNode
+	ASTNode
 
 	Exceptions []Expression
 	Body       CodeBlock
 }
 
 type WhileLoopStatement struct {
-	AstNode
+	ASTNode
 
+	Label     string
 	Condition Expression
 	Body      CodeBlock
 	Else      CodeBlock
 }
 
 type WithStatement struct {
-	AstNode
+	ASTNode
 
 	Value  Expression
-	Target LValue
+	Target Expression
 	Body   CodeBlock
 }

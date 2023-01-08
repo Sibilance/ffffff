@@ -1,7 +1,7 @@
 package ast
 
 type Class struct {
-	AstNode
+	ASTNode
 
 	Name    string
 	Fields  map[string]TypeDefinition
