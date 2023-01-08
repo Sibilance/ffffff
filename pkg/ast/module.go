@@ -9,3 +9,7 @@ type Module struct {
 	Functions map[string]Function
 	Constants map[string]Expression
 }
+
+func ParseModule(astNode ASTNode) (mod Module, err ASTError) {
+	return
+}
