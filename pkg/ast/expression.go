@@ -17,6 +17,13 @@ type CallExpression struct {
 	KeywordArguments    map[string]Expression
 }
 
+type LiteralExpression struct {
+	ASTNode
+	// TODO: What literal types should be supported?
+	// How best to support nested literals? Lists, maps, structs, etc.
+	// How best to support variable precision types like int?
+}
+
 type VariableExpression struct {
 	ASTNode
 
