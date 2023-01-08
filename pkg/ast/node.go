@@ -3,26 +3,22 @@ package ast
 import "errors"
 
 type Node interface {
-	FileName() string
-	Line() int
-	Column() int
-
 	Tag() string
 	Kind() Kind
 	AsSequence() ([]Node, Error)
 	AsMapping() (map[string]Node, Error)
 	AsScalar() (string, Error)
+
+	LocatorMessage() string
 }
 
 type NodeTemplate struct {
-	FileName string
-	Line     int
-	Column   int
-
 	Tag      string
 	Sequence []NodeTemplate
 	Mapping  map[string]NodeTemplate
 	Scalar   string
+
+	LocatorMessage string
 }
 
 func NewNode(template NodeTemplate) (Node, error) {
@@ -41,12 +37,10 @@ func NewNode(template NodeTemplate) (Node, error) {
 	}
 
 	node := simpleNode{
-		fileName: template.FileName,
-		line:     template.Line,
-		column:   template.Column,
-		tag:      template.Tag,
-		kind:     kind,
-		scalar:   template.Scalar,
+		tag:            template.Tag,
+		kind:           kind,
+		scalar:         template.Scalar,
+		locatorMessage: template.LocatorMessage,
 	}
 
 	if kind == SequenceNode {
@@ -83,27 +77,13 @@ const (
 )
 
 type simpleNode struct {
-	fileName string
-	line     int
-	column   int
-
 	tag      string
 	kind     Kind
 	sequence []Node
 	mapping  map[string]Node
 	scalar   string
-}
 
-func (node simpleNode) FileName() string {
-	return node.fileName
-}
-
-func (node simpleNode) Line() int {
-	return node.line
-}
-
-func (node simpleNode) Column() int {
-	return node.column
+	locatorMessage string
 }
 
 func (node simpleNode) Tag() string {
@@ -133,4 +113,8 @@ func (node simpleNode) AsScalar() (string, Error) {
 		return node.scalar, nil
 	}
 	return "", NewError(node, "not a scalar", nil)
+}
+
+func (node simpleNode) LocatorMessage() string {
+	return node.locatorMessage
 }
