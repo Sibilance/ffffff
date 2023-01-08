@@ -1,7 +1,7 @@
 package ast
 
 type CodeBlock struct {
-	ASTNode
+	Node
 
 	Statements []Statement
 }

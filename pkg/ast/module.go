@@ -1,7 +1,7 @@
 package ast
 
 type Module struct {
-	ASTNode
+	Node
 
 	Name      string
 	Imports   map[string]Import
@@ -10,6 +10,6 @@ type Module struct {
 	Constants map[string]Expression
 }
 
-func ParseModule(astNode ASTNode) (mod Module, err ASTError) {
+func ParseModule(astNode Node) (mod Module, err Error) {
 	return
 }

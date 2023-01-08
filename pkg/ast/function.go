@@ -1,7 +1,7 @@
 package ast
 
 type Function struct {
-	ASTNode
+	Node
 
 	Name string
 
@@ -13,7 +13,7 @@ type Function struct {
 }
 
 type FunctionArgumentDefinition struct {
-	ASTNode
+	Node
 
 	Name           string
 	TypeDefinition TypeDefinition

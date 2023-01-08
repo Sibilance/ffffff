@@ -1,30 +1,30 @@
 package ast
 
-type ASTError interface {
-	ASTNode
+type Error interface {
+	Node
 
 	Error() string
-	InnerErrors() []ASTError
+	InnerErrors() []Error
 }
 
-func NewError(astNode ASTNode, message string, innerErrors []ASTError) ASTError {
+func NewError(astNode Node, message string, innerErrors []Error) Error {
 	return &astError{
-		ASTNode:     astNode,
+		Node:        astNode,
 		message:     message,
 		innerErrors: innerErrors,
 	}
 }
 
 type astError struct {
-	ASTNode
+	Node
 	message     string
-	innerErrors []ASTError
+	innerErrors []Error
 }
 
 func (err *astError) Error() string {
 	return err.message
 }
 
-func (err *astError) InnerErrors() []ASTError {
+func (err *astError) InnerErrors() []Error {
 	return err.innerErrors
 }
