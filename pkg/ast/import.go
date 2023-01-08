@@ -1,7 +1,7 @@
 package ast
 
 type Import struct {
-	ASTNode
+	Node
 
 	Name string
 	Path ImportPath
