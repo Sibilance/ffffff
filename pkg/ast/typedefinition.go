@@ -1,7 +1,7 @@
 package ast
 
 type TypeDefinition struct {
-	AstNode
+	ASTNode
 
 	Type Expression
 }

@@ -1,6 +1,6 @@
 package ast
 
-type AstNode struct {
+type ASTNode struct {
 	DebugName string
 	FileName  string
 	Line      int

@@ -1,7 +1,7 @@
 package ast
 
 type Module struct {
-	AstNode
+	ASTNode
 
 	Name      string
 	Imports   map[string]Import
