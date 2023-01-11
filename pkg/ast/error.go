@@ -1,5 +1,7 @@
 package ast
 
+import "fmt"
+
 type Error interface {
 	Node
 
@@ -7,24 +9,60 @@ type Error interface {
 	InnerErrors() []Error
 }
 
-func NewError(astNode Node, message string, innerErrors []Error) Error {
-	return &astError{
-		Node:        astNode,
-		message:     message,
+func NewError(node Node, message string, args ...fmt.Stringer) Error {
+	return simpleError{
+		Node:        node,
+		message:     fmt.Sprintf(message, args),
+		innerErrors: nil,
+	}
+}
+
+func NewNestedError(node Node, innerErrors []Error, message string, args ...fmt.Stringer) Error {
+	return simpleError{
+		Node:        node,
+		message:     fmt.Sprintf(message, args),
 		innerErrors: innerErrors,
 	}
 }
 
-type astError struct {
+type simpleError struct {
 	Node
 	message     string
 	innerErrors []Error
 }
 
-func (err *astError) Error() string {
+func (err simpleError) Error() string {
 	return err.message
 }
 
-func (err *astError) InnerErrors() []Error {
+func (err simpleError) InnerErrors() []Error {
 	return err.innerErrors
+}
+
+func assertNodeKindIs(node Node, kind Kind) Error {
+	if node.Kind() != kind {
+		return NewError(
+			node,
+			fmt.Sprintf(
+				"expected %s, got %s",
+				kind,
+				node.Kind(),
+			),
+		)
+	}
+	return nil
+}
+
+func assertNodeTagIs(node Node, tag Tag) Error {
+	if node.Tag() != tag {
+		return NewError(
+			node,
+			fmt.Sprintf(
+				"expected %s, got %s",
+				tag,
+				node.Tag(),
+			),
+		)
+	}
+	return nil
 }
