@@ -1,19 +1,21 @@
 package ast
 
-import "errors"
+import (
+	"errors"
+)
 
 type Node interface {
-	Tag() string
+	Tag() Tag
 	Kind() Kind
-	AsSequence() ([]Node, Error)
-	AsMapping() (map[string]Node, Error)
-	AsScalar() (string, Error)
+	AsSequence() []Node
+	AsMapping() map[string]Node
+	AsScalar() string
 
 	LocatorMessage() string
 }
 
 type NodeTemplate struct {
-	Tag      string
+	Tag      Tag
 	Sequence []NodeTemplate
 	Mapping  map[string]NodeTemplate
 	Scalar   string
@@ -67,17 +69,8 @@ func NewNode(template NodeTemplate) (Node, error) {
 	return node, nil
 }
 
-type Kind uint8
-
-const (
-	UndefinedNode Kind = iota
-	SequenceNode
-	MappingNode
-	ScalarNode
-)
-
 type simpleNode struct {
-	tag      string
+	tag      Tag
 	kind     Kind
 	sequence []Node
 	mapping  map[string]Node
@@ -86,7 +79,7 @@ type simpleNode struct {
 	locatorMessage string
 }
 
-func (node simpleNode) Tag() string {
+func (node simpleNode) Tag() Tag {
 	return node.tag
 }
 
@@ -94,25 +87,16 @@ func (node simpleNode) Kind() Kind {
 	return node.kind
 }
 
-func (node simpleNode) AsSequence() ([]Node, Error) {
-	if node.kind == SequenceNode {
-		return node.sequence, nil
-	}
-	return nil, NewError(node, "not a sequence", nil)
+func (node simpleNode) AsSequence() []Node {
+	return node.sequence
 }
 
-func (node simpleNode) AsMapping() (map[string]Node, Error) {
-	if node.kind == MappingNode {
-		return node.mapping, nil
-	}
-	return nil, NewError(node, "not a mapping", nil)
+func (node simpleNode) AsMapping() map[string]Node {
+	return node.mapping
 }
 
-func (node simpleNode) AsScalar() (string, Error) {
-	if node.kind == ScalarNode {
-		return node.scalar, nil
-	}
-	return "", NewError(node, "not a scalar", nil)
+func (node simpleNode) AsScalar() string {
+	return node.scalar
 }
 
 func (node simpleNode) LocatorMessage() string {

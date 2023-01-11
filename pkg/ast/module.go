@@ -1,5 +1,7 @@
 package ast
 
+const ModuleTag Tag = "!module"
+
 type Module struct {
 	Node
 
@@ -10,6 +12,13 @@ type Module struct {
 	Constants map[string]Expression
 }
 
-func ParseModule(astNode Node) (mod Module, err Error) {
+/*
+ParseModule expects a map from global variable names to imports, classes,
+functions, and constants.
+*/
+func ParseModule(name string, node Node) (mod Module, err Error) {
+	if node.Tag() != ModuleTag {
+		err = NewError(node, "expected %s tag", ModuleTag)
+	}
 	return
 }
