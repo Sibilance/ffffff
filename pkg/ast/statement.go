@@ -1,113 +1,115 @@
 package ast
 
-type Statement interface{}
-
-type BreakStatement struct {
+type Statement[N Node] interface {
 	Node
+}
+
+type BreakStatement[N Node] struct {
+	Node N
 
 	Label string
 }
 
-type ContinueStatement struct {
-	Node
+type ContinueStatement[N Node] struct {
+	Node N
 
 	Label string
 }
 
-type ExpressionStatement struct {
-	Node
+type ExpressionStatement[N Node] struct {
+	Node N
 
-	Expression Expression
+	Expression Expression[N]
 }
 
-type ForLoopStatement struct {
-	Node
+type ForLoopStatement[N Node] struct {
+	Node N
 
 	Label    string
-	Target   VariableExpression
-	Iterable Expression
-	Body     CodeBlock
-	Else     CodeBlock
+	Target   VariableExpression[N]
+	Iterable Expression[N]
+	Body     CodeBlock[N]
+	Else     CodeBlock[N]
 }
 
-type IfStatement struct {
-	Node
+type IfStatement[N Node] struct {
+	Node N
 
-	Conditionals []IfStatementConditional
-	Else         CodeBlock
+	Conditionals []IfStatementConditional[N]
+	Else         CodeBlock[N]
 }
 
-type IfStatementConditional struct {
-	Node
+type IfStatementConditional[N Node] struct {
+	Node N
 
-	If   Expression
-	Then CodeBlock
+	If   Expression[N]
+	Then CodeBlock[N]
 }
 
-type LetStatement struct {
-	Node
+type LetStatement[N Node] struct {
+	Node N
 
 	VariableName string
-	Type         TypeDefinition
-	Value        Expression
+	Type         TypeDefinition[N]
+	Value        Expression[N]
 }
 
-type ReturnStatement struct {
-	Node
+type ReturnStatement[N Node] struct {
+	Node N
 
-	Value Expression
+	Value Expression[N]
 }
 
-type SwitchStatement struct {
-	Node
+type SwitchStatement[N Node] struct {
+	Node N
 
-	InputValue Expression
-	Cases      []SwitchStatementCase
-	Default    CodeBlock
+	InputValue Expression[N]
+	Cases      []SwitchStatementCase[N]
+	Default    CodeBlock[N]
 }
 
-type SwitchStatementCase struct {
-	Node
+type SwitchStatementCase[N Node] struct {
+	Node N
 
-	ComparisonValue Expression
-	Then            CodeBlock
+	ComparisonValue Expression[N]
+	Then            CodeBlock[N]
 }
 
-type ThrowStatement struct {
-	Node
+type ThrowStatement[N Node] struct {
+	Node N
 
-	Value Expression
+	Value Expression[N]
 }
 
-type TryStatement struct {
-	Node
+type TryStatement[N Node] struct {
+	Node N
 
-	Body    CodeBlock
-	Catches []TryStatementCatch
-	Else    CodeBlock
-	Finally CodeBlock
+	Body    CodeBlock[N]
+	Catches []TryStatementCatch[N]
+	Else    CodeBlock[N]
+	Finally CodeBlock[N]
 }
 
-type TryStatementCatch struct {
-	Node
+type TryStatementCatch[N Node] struct {
+	Node N
 
-	Exceptions []Expression
-	Body       CodeBlock
+	Exceptions []Expression[N]
+	Body       CodeBlock[N]
 }
 
-type WhileLoopStatement struct {
-	Node
+type WhileLoopStatement[N Node] struct {
+	Node N
 
 	Label     string
-	Condition Expression
-	Body      CodeBlock
-	Else      CodeBlock
+	Condition Expression[N]
+	Body      CodeBlock[N]
+	Else      CodeBlock[N]
 }
 
-type WithStatement struct {
-	Node
+type WithStatement[N Node] struct {
+	Node N
 
-	Value  Expression
-	Target Expression
-	Body   CodeBlock
+	Value  Expression[N]
+	Target Expression[N]
+	Body   CodeBlock[N]
 }

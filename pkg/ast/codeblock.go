@@ -1,7 +1,7 @@
 package ast
 
-type CodeBlock struct {
-	Node
+type CodeBlock[N Node] struct {
+	Node N
 
-	Statements []Statement
+	Statements []Statement[N]
 }

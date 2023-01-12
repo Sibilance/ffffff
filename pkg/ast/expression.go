@@ -1,31 +1,33 @@
 package ast
 
-type Expression interface{}
-
-type AssignmentExpression struct {
+type Expression[N Node] interface {
 	Node
-
-	Target VariableExpression
-	Value  Expression
 }
 
-type CallExpression struct {
-	Node
+type AssignmentExpression[N Node] struct {
+	Node N
 
-	Callable            Expression
-	PositionalArguments []Expression
-	KeywordArguments    map[string]Expression
+	Target VariableExpression[N]
+	Value  Expression[N]
 }
 
-type LiteralExpression struct {
-	Node
+type CallExpression[N Node] struct {
+	Node N
+
+	Callable            Expression[N]
+	PositionalArguments []Expression[N]
+	KeywordArguments    map[string]Expression[N]
+}
+
+type LiteralExpression[N Node] struct {
+	Node N
 	// TODO: What literal types should be supported?
 	// How best to support nested literals? Lists, maps, structs, etc.
 	// How best to support variable precision types like int?
 }
 
-type VariableExpression struct {
-	Node
+type VariableExpression[N Node] struct {
+	Node N
 
 	Name string
 }

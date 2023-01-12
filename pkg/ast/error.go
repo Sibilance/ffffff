@@ -2,44 +2,39 @@ package ast
 
 import "fmt"
 
-type Error interface {
-	Node
+type Error[N Node] *simpleError[N]
 
-	Error() string
-	InnerErrors() []Error
-}
-
-func NewError(node Node, message string, args ...fmt.Stringer) Error {
-	return simpleError{
+func NewError[N Node](node N, message string, args ...fmt.Stringer) Error[N] {
+	return &simpleError[N]{
 		Node:        node,
 		message:     fmt.Sprintf(message, args),
 		innerErrors: nil,
 	}
 }
 
-func NewNestedError(node Node, innerErrors []Error, message string, args ...fmt.Stringer) Error {
-	return simpleError{
+func NewNestedError[N Node](node N, innerErrors []Error[N], message string, args ...fmt.Stringer) Error[N] {
+	return &simpleError[N]{
 		Node:        node,
 		message:     fmt.Sprintf(message, args),
 		innerErrors: innerErrors,
 	}
 }
 
-type simpleError struct {
-	Node
+type simpleError[N Node] struct {
+	Node        N
 	message     string
-	innerErrors []Error
+	innerErrors []Error[N]
 }
 
-func (err simpleError) Error() string {
+func (err simpleError[N]) Error() string {
 	return err.message
 }
 
-func (err simpleError) InnerErrors() []Error {
+func (err simpleError[N]) InnerErrors() []Error[N] {
 	return err.innerErrors
 }
 
-func assertNodeKindIs(node Node, kind Kind) Error {
+func assertNodeKindIs[N Node](node N, kind Kind) Error[N] {
 	if node.Kind() != kind {
 		return NewError(
 			node,
@@ -53,7 +48,7 @@ func assertNodeKindIs(node Node, kind Kind) Error {
 	return nil
 }
 
-func assertNodeTagIs(node Node, tag Tag) Error {
+func assertNodeTagIs[N Node](node N, tag Tag) Error[N] {
 	if node.Tag() != tag {
 		return NewError(
 			node,

@@ -1,7 +1,7 @@
 package ast
 
-type TypeDefinition struct {
-	Node
+type TypeDefinition[N Node] struct {
+	Node N
 
-	Type Expression
+	Type Expression[N]
 }

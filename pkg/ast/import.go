@@ -6,8 +6,8 @@ import (
 
 const ImportTag = "!import"
 
-type Import struct {
-	Node
+type Import[N Node] struct {
+	Node N
 
 	Path []string
 }
@@ -16,20 +16,21 @@ type Import struct {
 ParseImport expects either a string of "."-delimited path components,
 or a sequence of path components (strings).
 */
-func ParseImport(node Node) (*Import, Error) {
+func ParseImport[N Node](node N) (*Import[N], Error[N]) {
 	if err := assertNodeTagIs(node, ModuleTag); err != nil {
 		return nil, err
 	}
 
 	var path []string
-	var err Error
-	var innerErrors []Error
+	var err Error[N]
+	var innerErrors []Error[N]
 
 	switch node.Kind() {
 	case ScalarNode:
 		path = strings.Split(node.AsScalar(), ".")
 	case SequenceNode:
 		for _, innerNode := range node.AsSequence() {
+			innerNode := innerNode.(N)
 			if err := assertNodeKindIs(innerNode, ScalarNode); err != nil {
 				innerErrors = append(innerErrors, err)
 			}
@@ -43,7 +44,7 @@ func ParseImport(node Node) (*Import, Error) {
 		err = NewNestedError(node, innerErrors, "invalid Import definition")
 	}
 
-	return &Import{
+	return &Import[N]{
 		Node: node,
 		Path: path,
 	}, err

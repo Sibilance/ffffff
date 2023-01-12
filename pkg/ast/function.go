@@ -1,20 +1,20 @@
 package ast
 
-type Function struct {
-	Node
+type Function[N Node] struct {
+	Node N
 
 	Name string
 
-	PositionalArguments []FunctionArgumentDefinition
-	KeywordArguments    map[string]FunctionArgumentDefinition
-	ReturnType          TypeDefinition
+	PositionalArguments []FunctionArgumentDefinition[N]
+	KeywordArguments    map[string]FunctionArgumentDefinition[N]
+	ReturnType          TypeDefinition[N]
 
-	Body CodeBlock
+	Body CodeBlock[N]
 }
 
-type FunctionArgumentDefinition struct {
+type FunctionArgumentDefinition[N Node] struct {
 	Node
 
 	Name           string
-	TypeDefinition TypeDefinition
+	TypeDefinition TypeDefinition[N]
 }

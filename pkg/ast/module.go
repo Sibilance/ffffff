@@ -2,21 +2,21 @@ package ast
 
 const ModuleTag Tag = "!module"
 
-type Module struct {
-	Node
+type Module[N Node] struct {
+	Node N
 
 	Name      string
-	Imports   map[string]Import
-	Classes   map[string]Class
-	Functions map[string]Function
-	Constants map[string]Expression
+	Imports   map[string]Import[N]
+	Classes   map[string]Class[N]
+	Functions map[string]Function[N]
+	Constants map[string]Expression[N]
 }
 
 /*
 ParseModule expects a map from global variable names to imports, classes,
 functions, and constants.
 */
-func ParseModule(name string, node Node) (mod Module, err Error) {
+func ParseModule[N Node](name string, node N) (mod Module[N], err Error[N]) {
 	if node.Tag() != ModuleTag {
 		err = NewError(node, "expected %s tag", ModuleTag)
 	}

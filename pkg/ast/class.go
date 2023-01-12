@@ -1,9 +1,9 @@
 package ast
 
-type Class struct {
-	Node
+type Class[N Node] struct {
+	Node N
 
 	Name    string
-	Fields  map[string]TypeDefinition
-	Methods map[string]Function
+	Fields  map[string]TypeDefinition[N]
+	Methods map[string]Function[N]
 }
