@@ -17,34 +17,30 @@ ParseImport expects either a string of "."-delimited path components,
 or a sequence of path components (strings).
 */
 func ParseImport(node Node) (*Import, Error) {
-	if err := assertNodeTagIs(node, ModuleTag); err != nil {
+	if err := assertNodeTag(node, ModuleTag); err != nil {
+		return nil, err
+	}
+	if err := assertNodeKind(node, ScalarNode, SequenceNode); err != nil {
 		return nil, err
 	}
 
 	var path []string
-	var err Error
-	var innerErrors []Error
+	err := newError(node, "")
 
 	switch node.Kind() {
 	case ScalarNode:
 		path = strings.Split(node.AsScalar(), ".")
 	case SequenceNode:
 		for _, innerNode := range node.AsSequence() {
-			if err := assertNodeKindIs(innerNode, ScalarNode); err != nil {
-				innerErrors = append(innerErrors, err)
+			if innerError := assertNodeKind(innerNode, ScalarNode); innerError != nil {
+				err.appendError(innerError)
 			}
 			path = append(path, innerNode.AsScalar())
 		}
-	default:
-		return nil, NewError(node, "expected %s or %s", ScalarNode, SequenceNode)
-	}
-
-	if len(innerErrors) != 0 {
-		err = NewNestedError(node, innerErrors, "invalid Import definition")
 	}
 
 	return &Import{
 		Node: node,
 		Path: path,
-	}, err
+	}, err.orNil("invalid Import definition")
 }
