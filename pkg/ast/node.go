@@ -11,7 +11,8 @@ type Node interface {
 	AsMapping() map[string]Node
 	AsScalar() string
 
-	LocatorMessage() string
+	ReportError(error)
+	LatestError() error
 }
 
 type NodeTemplate struct {
@@ -20,7 +21,7 @@ type NodeTemplate struct {
 	Mapping  map[string]NodeTemplate
 	Scalar   string
 
-	LocatorMessage string
+	Errors []error
 }
 
 func NewNode(template NodeTemplate) (Node, error) {
@@ -39,10 +40,10 @@ func NewNode(template NodeTemplate) (Node, error) {
 	}
 
 	node := simpleNode{
-		tag:            template.Tag,
-		kind:           kind,
-		scalar:         template.Scalar,
-		locatorMessage: template.LocatorMessage,
+		tag:    template.Tag,
+		kind:   kind,
+		scalar: template.Scalar,
+		errors: template.Errors,
 	}
 
 	if kind == SequenceNode {
@@ -66,7 +67,7 @@ func NewNode(template NodeTemplate) (Node, error) {
 		}
 	}
 
-	return node, nil
+	return &node, nil
 }
 
 type simpleNode struct {
@@ -76,29 +77,36 @@ type simpleNode struct {
 	mapping  map[string]Node
 	scalar   string
 
-	locatorMessage string
+	errors []error
 }
 
-func (node simpleNode) Tag() Tag {
+func (node *simpleNode) Tag() Tag {
 	return node.tag
 }
 
-func (node simpleNode) Kind() Kind {
+func (node *simpleNode) Kind() Kind {
 	return node.kind
 }
 
-func (node simpleNode) AsSequence() []Node {
+func (node *simpleNode) AsSequence() []Node {
 	return node.sequence
 }
 
-func (node simpleNode) AsMapping() map[string]Node {
+func (node *simpleNode) AsMapping() map[string]Node {
 	return node.mapping
 }
 
-func (node simpleNode) AsScalar() string {
+func (node *simpleNode) AsScalar() string {
 	return node.scalar
 }
 
-func (node simpleNode) LocatorMessage() string {
-	return node.locatorMessage
+func (node *simpleNode) ReportError(error_ error) {
+	node.errors = append(node.errors, error_)
+}
+
+func (node *simpleNode) LatestError() error {
+	if len(node.errors) == 0 {
+		return nil
+	}
+	return node.errors[len(node.errors)-1]
 }
