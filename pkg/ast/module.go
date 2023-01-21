@@ -16,9 +16,9 @@ type Module struct {
 ParseModule expects a map from global variable names to imports, classes,
 functions, and constants.
 */
-func ParseModule(name string, node Node) (*Module, Error) {
-	if err := assertNodeTag(node, ModuleTag); err != nil {
-		return nil, err
+func ParseModule(name string, node Node) *Module {
+	if assertNodeTag(node, ModuleTag) != nil {
+		return nil
 	}
-	return nil, nil
+	return nil
 }
