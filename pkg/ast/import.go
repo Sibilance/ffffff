@@ -14,39 +14,31 @@ type Import struct {
 }
 
 /*
-ParseImport expects either a string of "."-delimited path components,
+Import.Parse expects either a string of "."-delimited path components,
 or a sequence of path components (strings).
 */
-func ParseImport(node Node) *Import {
-	if assertNodeTag(node, ModuleTag) != nil {
-		return nil
-	}
-	if assertNodeKind(node, ScalarNode, SequenceNode) != nil {
-		return nil
-	}
+func (i *Import) Parse() *Import {
+	assertTag(i, ModuleTag)
+	assertKind(i, ScalarNode, SequenceNode)
 
-	var path []string
-	var failed bool
+	i.Path = nil
+	var err error
 
-	switch node.Kind() {
+	switch i.Kind() {
 	case ScalarNode:
-		path = strings.Split(node.AsScalar(), ".")
+		i.Path = strings.Split(i.AsScalar(), ".")
 	case SequenceNode:
-		for _, innerNode := range node.AsSequence() {
-			if assertNodeKind(innerNode, ScalarNode) != nil {
-				failed = true
-				continue
+		for _, innerNode := range i.AsSequence() {
+			if assertKind(innerNode, ScalarNode) != nil && err == nil {
+				err = errors.New("expected sequence of string path components")
 			}
-			path = append(path, innerNode.AsScalar())
+			i.Path = append(i.Path, innerNode.AsScalar())
 		}
 	}
 
-	if failed {
-		node.ReportError(errors.New("invalid Import definition"))
+	if err != nil {
+		i.ReportError(err)
 	}
 
-	return &Import{
-		Node: node,
-		Path: path,
-	}
+	return i
 }

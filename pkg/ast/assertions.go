@@ -8,7 +8,7 @@ import (
 func assertOneOf[T interface {
 	fmt.Stringer
 	comparable
-}](actual T, expecteds ...T) error {
+}](msg string, actual T, expecteds []T) error {
 	for _, expected := range expecteds {
 		if actual == expected {
 			return nil
@@ -17,7 +17,8 @@ func assertOneOf[T interface {
 	if len(expecteds) == 1 {
 		expected := expecteds[0]
 		return fmt.Errorf(
-			"expected %s, got %s",
+			"%s: expected %s, got %s",
+			msg,
 			expected,
 			actual,
 		)
@@ -27,20 +28,21 @@ func assertOneOf[T interface {
 		expectedStrs = append(expectedStrs, expected.String())
 	}
 	return fmt.Errorf(
-		"expected one of [%s], got %s",
+		"%s: expected one of [%s], got %s",
+		msg,
 		strings.Join(expectedStrs, ", "),
 		actual,
 	)
 }
 
-func assertNodeKind(node Node, kinds ...Kind) (err error) {
-	err = assertOneOf(node.Kind(), kinds...)
+func assertKind(node Node, kinds ...Kind) (err error) {
+	err = assertOneOf("unexpected kind", node.Kind(), kinds)
 	node.ReportError(err)
 	return
 }
 
-func assertNodeTag(node Node, tags ...Tag) (err error) {
-	err = assertOneOf(node.Tag(), tags...)
+func assertTag(node Node, tags ...Tag) (err error) {
+	err = assertOneOf("unexpected tag", node.Tag(), tags)
 	node.ReportError(err)
 	return
 }
