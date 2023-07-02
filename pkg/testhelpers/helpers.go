@@ -22,7 +22,7 @@ func GetTestFile(t *testing.T) string {
 
 func CompareNodes(actual, expected *yaml.Node) error {
 	if actual.Kind != expected.Kind {
-		return fmt.Errorf("expected Kind %d, got %d", expected.Kind, actual.Kind)
+		return fmt.Errorf("expected Kind %s, got %s", kindString(expected.Kind), kindString(actual.Kind))
 	}
 
 	if actual.Tag != expected.Tag {
@@ -34,7 +34,7 @@ func CompareNodes(actual, expected *yaml.Node) error {
 	}
 
 	if actual.Anchor != expected.Anchor {
-		return fmt.Errorf("expected Anchor '%s', got '%s'", expected.Anchor, actual.Anchor)
+		return fmt.Errorf("expected Anchor %s, got %s", expected.Anchor, actual.Anchor)
 	}
 
 	if actual.HeadComment != expected.HeadComment {
@@ -62,4 +62,21 @@ func CompareNodes(actual, expected *yaml.Node) error {
 	}
 
 	return nil
+}
+
+func kindString(kind yaml.Kind) string {
+	switch kind {
+	case yaml.DocumentNode:
+		return "DocumentNode"
+	case yaml.SequenceNode:
+		return "SequenceNode"
+	case yaml.MappingNode:
+		return "MappingNode"
+	case yaml.ScalarNode:
+		return "ScalarNode"
+	case yaml.AliasNode:
+		return "AliasNode"
+	default:
+		return fmt.Sprint(kind)
+	}
 }
