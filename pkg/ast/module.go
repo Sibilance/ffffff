@@ -5,7 +5,6 @@ const ModuleTag Tag = "!module"
 type Module struct {
 	Node
 
-	Name      string
 	Imports   map[string]Import
 	Classes   map[string]Class
 	Functions map[string]Function
@@ -16,7 +15,17 @@ type Module struct {
 Module.Parse expects a map from global variable names to imports, classes,
 functions, and constants.
 */
-func (m *Module) Parse(name string) *Module {
+func (m *Module) Parse(n Node) {
+	m.Node = n
 	assertTag(m, ModuleTag)
-	return m
+
+	for _, innerNode := range m.AsMapping() {
+		assertTag(innerNode, ImportTag, ClassTag, FunctionTag)
+	}
+
+	parseByTag(m, m.Imports, ImportTag)
+	parseByTag(m, m.Classes, ClassTag)
+	parseByTag(m, m.Functions, FunctionTag)
+	parseByTag(m, m.Constants, ConstantTag)
+
 }

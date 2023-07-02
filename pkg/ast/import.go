@@ -17,7 +17,8 @@ type Import struct {
 Import.Parse expects either a string of "."-delimited path components,
 or a sequence of path components (strings).
 */
-func (i *Import) Parse() *Import {
+func (i *Import) Parse(n Node) {
+	i.Node = n
 	assertTag(i, ModuleTag)
 	assertKind(i, ScalarNode, SequenceNode)
 
@@ -39,6 +40,4 @@ func (i *Import) Parse() *Import {
 	if err != nil {
 		i.ReportError(err)
 	}
-
-	return i
 }
