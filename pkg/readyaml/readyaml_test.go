@@ -56,3 +56,51 @@ func TestReadFileMissing(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 }
+
+func TestReadFileMap(t *testing.T) {
+	documents, err := ReadFile(testhelpers.GetTestFile(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(documents) != 1 {
+		t.Fatalf("wrong number of documents: %d", len(documents))
+	}
+
+	document := documents[0]
+
+	err = testhelpers.CompareNodes(document, &yaml.Node{
+		Kind: yaml.DocumentNode,
+		Content: []*yaml.Node{
+			{
+				Kind: yaml.MappingNode,
+				Tag:  "!!map",
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "Key",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "Value",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "Foo",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "Bar",
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
