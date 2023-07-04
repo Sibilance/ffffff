@@ -7,18 +7,32 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sibilance/ffffff/pkg/readyaml"
 	"github.com/sibilance/ffffff/pkg/yamlhelpers"
 	"gopkg.in/yaml.v3"
 )
 
 func getTestPath(t *testing.T, depth int) string {
-	_, testPath, _, _ := runtime.Caller(depth)
+	_, testPath, _, _ := runtime.Caller(depth + 1)
 	testDir := strings.TrimSuffix(testPath, filepath.Ext(testPath))
 	return filepath.Join(testDir, t.Name())
 }
 
+func getTestFile(t *testing.T, depth int) string {
+	return getTestPath(t, depth+1) + ".yaml"
+}
+
 func GetTestFile(t *testing.T) string {
-	return getTestPath(t, 2) + ".yaml"
+	return getTestFile(t, 1)
+}
+
+func GetTestYaml(t *testing.T) []*yaml.Node {
+	documents, err := readyaml.ReadFile(getTestFile(t, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return documents
 }
 
 func CompareNodes(actual, expected *yaml.Node) error {

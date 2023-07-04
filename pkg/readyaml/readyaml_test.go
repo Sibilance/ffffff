@@ -1,15 +1,16 @@
-package readyaml
+package readyaml_test // Separate package to avoid dependency cycle with testhelpers.
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/sibilance/ffffff/pkg/readyaml"
 	"github.com/sibilance/ffffff/pkg/testhelpers"
 	"gopkg.in/yaml.v3"
 )
 
 func TestReadFile(t *testing.T) {
-	documents, err := ReadFile(testhelpers.GetTestFile(t))
+	documents, err := readyaml.ReadFile(testhelpers.GetTestFile(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +51,7 @@ func TestReadFile(t *testing.T) {
 
 func TestReadFileMissing(t *testing.T) {
 	fileName := testhelpers.GetTestFile(t)
-	_, err := ReadFile(fileName)
+	_, err := readyaml.ReadFile(fileName)
 
 	if err == nil || err.Error() != fmt.Sprintf("open %s: no such file or directory", fileName) {
 		t.Fatalf("unexpected error: %s", err)
@@ -58,7 +59,7 @@ func TestReadFileMissing(t *testing.T) {
 }
 
 func TestReadFileMap(t *testing.T) {
-	documents, err := ReadFile(testhelpers.GetTestFile(t))
+	documents, err := readyaml.ReadFile(testhelpers.GetTestFile(t))
 	if err != nil {
 		t.Fatal(err)
 	}
