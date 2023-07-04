@@ -9,7 +9,7 @@ import (
 )
 
 func TestGetTestPath(t *testing.T) {
-	testPath := getTestPath(t, 1)
+	testPath := getTestPath(t, 0)
 
 	if !strings.HasSuffix(testPath, "/pkg/testhelpers/testhelpers_test/TestGetTestPath") {
 		t.Fatalf("unexpected test path: %s", testPath)
@@ -33,6 +33,44 @@ func TestGetTestFile(t *testing.T) {
 
 	if string(contents) != "This is TestGetTestFile.yaml." {
 		t.Fatalf("unexpected contents: %s", contents)
+	}
+}
+
+func TestGetTestYaml(t *testing.T) {
+	documents := GetTestYaml(t)
+
+	if len(documents) != 2 {
+		t.Fatalf("expected two documents, got %d", len(documents))
+	}
+
+	err := CompareNodeLists(
+		documents,
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "document 1",
+					},
+				},
+			},
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "document 2",
+					},
+				},
+			},
+		},
+	)
+
+	if err != nil {
+		t.Fatalf("unexpected error, %s", err)
 	}
 }
 
