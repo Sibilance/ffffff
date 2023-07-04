@@ -38,3 +38,7 @@ func TestVoidSequence(t *testing.T) {
 func TestVoidMapping(t *testing.T) {
 	testProcessDocuments(t, 1)
 }
+
+func TestVoidRecursive(t *testing.T) {
+	testProcessDocuments(t, 3)
+}
