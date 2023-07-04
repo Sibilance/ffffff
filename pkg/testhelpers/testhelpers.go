@@ -60,7 +60,7 @@ func GetYamlTestCases(t *testing.T, count int) (inputs, outputs [][]*yaml.Node) 
 
 	mode := inputMode
 	var inputDocuments, outputDocuments []*yaml.Node
-	for _, document := range documents {
+	for i, document := range documents {
 		if mode == inputMode {
 			inputDocuments = append(inputDocuments, document)
 		} else { // outputMode
@@ -68,6 +68,15 @@ func GetYamlTestCases(t *testing.T, count int) (inputs, outputs [][]*yaml.Node) 
 		}
 
 		footComment := document.FootComment
+		if i == 0 && strings.HasPrefix(footComment, inputPrefix) {
+			// A bug in the yaml library sometimes attaches comments above the first document
+			// as foot comments to that document. If this happens, try to remove it by searching
+			// for `outputPrefix`.
+			index := strings.Index(footComment, "\n"+outputPrefix)
+			if index > 0 {
+				footComment = footComment[index+1:]
+			}
+		}
 		if mode == outputMode && strings.HasPrefix(footComment, inputPrefix) {
 			mode = inputMode
 			inputs = append(inputs, inputDocuments)

@@ -30,3 +30,7 @@ func testProcessDocuments(t *testing.T, count int) {
 func TestVoidDocument(t *testing.T) {
 	testProcessDocuments(t, 1)
 }
+
+func TestVoidSequence(t *testing.T) {
+	testProcessDocuments(t, 1)
+}

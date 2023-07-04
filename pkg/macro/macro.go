@@ -60,6 +60,17 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 		}
 
 	case yaml.SequenceNode:
+		children := node.Content
+		node.Content = nil
+		for i, child := range children {
+			err := ProcessNode(context.New(fmt.Sprint(i)), child)
+			if err != nil {
+				return err
+			}
+			if !IsVoid(child) {
+				node.Content = append(node.Content, child)
+			}
+		}
 
 	case yaml.MappingNode:
 

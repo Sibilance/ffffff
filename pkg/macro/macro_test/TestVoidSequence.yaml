@@ -1,0 +1,13 @@
+# Input
+---
+- "First item"
+- !void 
+- "Second item"
+- !void
+- "Third item"
+
+# Output
+---
+- "First item"
+- "Second item"
+- "Third item"
