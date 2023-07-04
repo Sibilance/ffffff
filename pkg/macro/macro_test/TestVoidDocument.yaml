@@ -1,4 +1,15 @@
+# Input
 ---
 !void
 ---
 "first non-void document"
+---
+!void
+---
+"second non-void document"
+
+# Output
+---  
+"first non-void document"
+---
+"second non-void document"

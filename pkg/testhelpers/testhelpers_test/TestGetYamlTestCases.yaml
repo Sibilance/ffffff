@@ -1,0 +1,19 @@
+# Input 1
+---  
+"input document 1.1"
+---
+"input document 1.2"
+
+# Output 1
+---  
+"output document 1.1"
+
+# Input 2
+---  
+"input document 2.1"
+
+# Output 2
+---  
+"output document 2.1"
+---
+"output document 2.2"
