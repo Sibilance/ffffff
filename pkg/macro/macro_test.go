@@ -4,30 +4,29 @@ import (
 	"testing"
 
 	"github.com/sibilance/ffffff/pkg/testhelpers"
-	"gopkg.in/yaml.v3"
 )
 
-func TestVoidDocument(t *testing.T) {
-	inputs, _ := testhelpers.GetYamlTestCases(t, 1)
+func testProcessDocuments(t *testing.T, count int) {
+	inputs, outputs := testhelpers.GetYamlTestCases(t, count)
 
-	err := ProcessDocuments(&Context{}, &inputs[0])
-	if err != nil {
-		t.Fatal(err)
+	for i, input := range inputs {
+		output := outputs[i]
+
+		err := ProcessDocuments(&Context{}, &input)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = testhelpers.CompareNodeLists(
+			input,
+			output,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
+}
 
-	testhelpers.CompareNodeLists(
-		inputs[0],
-		[]*yaml.Node{
-			{
-				Kind: yaml.DocumentNode,
-				Content: []*yaml.Node{
-					{
-						Kind:  yaml.ScalarNode,
-						Tag:   "!!str",
-						Value: "first non-void document",
-					},
-				},
-			},
-		},
-	)
+func TestVoidDocument(t *testing.T) {
+	testProcessDocuments(t, 1)
 }

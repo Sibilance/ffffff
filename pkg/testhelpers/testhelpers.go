@@ -61,18 +61,13 @@ func GetYamlTestCases(t *testing.T, count int) (inputs, outputs [][]*yaml.Node) 
 	mode := inputMode
 	var inputDocuments, outputDocuments []*yaml.Node
 	for _, document := range documents {
-		fmt.Printf("%d %+v\n", mode, document)
-		fmt.Printf("%+v\n", document.Content[0])
-
 		if mode == inputMode {
 			inputDocuments = append(inputDocuments, document)
 		} else { // outputMode
 			outputDocuments = append(outputDocuments, document)
 		}
 
-		fmt.Printf("%d %d\n", len(inputDocuments), len(outputDocuments))
 		footComment := document.FootComment
-		fmt.Println(footComment)
 		if mode == outputMode && strings.HasPrefix(footComment, inputPrefix) {
 			mode = inputMode
 			inputs = append(inputs, inputDocuments)
