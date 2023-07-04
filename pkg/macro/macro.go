@@ -76,7 +76,7 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 		children := node.Content
 		node.Content = nil
 		for i, child := range children {
-			if i%2 == 0 {
+			if i&1 == 0 {
 				err := ProcessNode(context.New(fmt.Sprintf("%d(key)", i/2)), child)
 				if err != nil {
 					return err
@@ -89,12 +89,14 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 				} else {
 					contextName = fmt.Sprintf("%d(value)", i/2)
 				}
-				err := ProcessNode(context.New(contextName), child)
-				if err != nil {
-					return err
-				}
-				if !IsVoid(key) && !IsVoid(child) {
-					node.Content = append(node.Content, key, child)
+				if !IsVoid(key) {
+					err := ProcessNode(context.New(contextName), child)
+					if err != nil {
+						return err
+					}
+					if !IsVoid(child) {
+						node.Content = append(node.Content, key, child)
+					}
 				}
 			}
 		}
@@ -104,7 +106,7 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 	case yaml.AliasNode:
 
 	default:
-
+		return context.Error(node, fmt.Sprintf("unexpected node kind, %s", yamlhelpers.KindString(node.Kind)))
 	}
 
 	return nil
