@@ -26,13 +26,75 @@ func GetTestFile(t *testing.T) string {
 	return getTestFile(t, 1)
 }
 
-func GetTestYaml(t *testing.T) []*yaml.Node {
-	documents, err := readyaml.ReadFile(getTestFile(t, 1))
+func getTestYaml(t *testing.T, depth int) []*yaml.Node {
+	documents, err := readyaml.ReadFile(getTestFile(t, depth+1))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return documents
+}
+
+func GetTestYaml(t *testing.T) []*yaml.Node {
+	return getTestYaml(t, 1)
+}
+
+func GetYamlTestCases(t *testing.T, count int) (inputs, outputs [][]*yaml.Node) {
+	type Mode int
+	const (
+		inputPrefix  = "# Input"
+		outputPrefix = "# Output"
+	)
+	const (
+		inputMode Mode = iota
+		outputMode
+	)
+	documents := getTestYaml(t, 1)
+
+	if len(documents) < 1 {
+		t.Fatal("expected at least one document")
+	}
+	if len(documents[0].Content) != 1 {
+		t.Fatal("expected exactly one child of document")
+	}
+
+	mode := inputMode
+	var inputDocuments, outputDocuments []*yaml.Node
+	for _, document := range documents {
+		fmt.Printf("%d %+v\n", mode, document)
+		fmt.Printf("%+v\n", document.Content[0])
+
+		if mode == inputMode {
+			inputDocuments = append(inputDocuments, document)
+		} else { // outputMode
+			outputDocuments = append(outputDocuments, document)
+		}
+
+		fmt.Printf("%d %d\n", len(inputDocuments), len(outputDocuments))
+		footComment := document.FootComment
+		fmt.Println(footComment)
+		if mode == outputMode && strings.HasPrefix(footComment, inputPrefix) {
+			mode = inputMode
+			inputs = append(inputs, inputDocuments)
+			outputs = append(outputs, outputDocuments)
+			inputDocuments = nil
+			outputDocuments = nil
+		}
+		if strings.HasPrefix(footComment, outputPrefix) {
+			mode = outputMode
+		}
+	}
+
+	inputs = append(inputs, inputDocuments)
+	outputs = append(outputs, outputDocuments)
+
+	if len(inputs) != count {
+		t.Fatalf("expected %d inputs, got %d", count, len(inputs))
+	}
+	if len(outputs) != count {
+		t.Fatalf("expected %d outputs, got %d", count, len(outputs))
+	}
+	return
 }
 
 func CompareNodes(actual, expected *yaml.Node) error {
@@ -50,18 +112,6 @@ func CompareNodes(actual, expected *yaml.Node) error {
 
 	if actual.Anchor != expected.Anchor {
 		return fmt.Errorf("expected Anchor %s, got %s", expected.Anchor, actual.Anchor)
-	}
-
-	if actual.HeadComment != expected.HeadComment {
-		return fmt.Errorf("expected HeadComment '%s', got '%s'", expected.HeadComment, actual.HeadComment)
-	}
-
-	if actual.LineComment != expected.LineComment {
-		return fmt.Errorf("expected LineComment '%s', got '%s'", expected.LineComment, actual.LineComment)
-	}
-
-	if actual.FootComment != expected.FootComment {
-		return fmt.Errorf("expected FootComment '%s', got '%s'", expected.FootComment, actual.FootComment)
 	}
 
 	if len(actual.Content) != len(expected.Content) {

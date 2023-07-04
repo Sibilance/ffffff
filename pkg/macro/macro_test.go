@@ -3,24 +3,20 @@ package macro
 import (
 	"testing"
 
-	"github.com/sibilance/ffffff/pkg/readyaml"
 	"github.com/sibilance/ffffff/pkg/testhelpers"
 	"gopkg.in/yaml.v3"
 )
 
 func TestVoidDocument(t *testing.T) {
-	documents, err := readyaml.ReadFile(testhelpers.GetTestFile(t))
-	if err != nil {
-		t.Fatal(err)
-	}
+	inputs, _ := testhelpers.GetYamlTestCases(t, 1)
 
-	err = ProcessDocuments(&Context{}, &documents)
+	err := ProcessDocuments(&Context{}, &inputs[0])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	testhelpers.CompareNodeLists(
-		documents,
+		inputs[0],
 		[]*yaml.Node{
 			{
 				Kind: yaml.DocumentNode,

@@ -70,12 +70,118 @@ func TestGetTestYaml(t *testing.T) {
 	)
 
 	if err != nil {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
+	}
+}
+
+func TestGetYamlTestCases(t *testing.T) {
+	inputs, outputs := GetYamlTestCases(t, 2)
+
+	if len(inputs) != 2 {
+		t.Fatalf("expected two inputs, got %d", len(inputs))
+	}
+	if len(outputs) != 2 {
+		t.Fatalf("expected two outputs, got %d", len(outputs))
+	}
+
+	err := CompareNodeLists(
+		inputs[0],
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "input document 1.1",
+					},
+				},
+			},
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "input document 1.2",
+					},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = CompareNodeLists(
+		outputs[0],
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "output document 1.1",
+					},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = CompareNodeLists(
+		inputs[1],
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "input document 2.1",
+					},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = CompareNodeLists(
+		outputs[1],
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "output document 2.1",
+					},
+				},
+			},
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "output document 2.2",
+					},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
 func TestCompareNodes(t *testing.T) {
-	var err error
 	expected := yaml.Node{
 		Kind:        yaml.DocumentNode,
 		Tag:         "!myTag",
@@ -90,7 +196,7 @@ func TestCompareNodes(t *testing.T) {
 	}
 
 	actual := expected
-	err = CompareNodes(&actual, &expected)
+	err := CompareNodes(&actual, &expected)
 	if err != nil {
 		t.Fatalf("expected nodes to be identical")
 	}
@@ -99,56 +205,56 @@ func TestCompareNodes(t *testing.T) {
 	err = CompareNodes(&actual, &expected)
 	actual.Kind = expected.Kind
 	if err == nil || err.Error() != "expected Kind DocumentNode, got AliasNode" {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 
 	actual.Tag = "!newTag"
 	err = CompareNodes(&actual, &expected)
 	actual.Tag = expected.Tag
 	if err == nil || err.Error() != "expected Tag !myTag, got !newTag" {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 
 	actual.Value = "newValue"
 	err = CompareNodes(&actual, &expected)
 	actual.Value = expected.Value
 	if err == nil || err.Error() != "expected Value 'myValue', got 'newValue'" {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 
 	actual.Anchor = "newAnchor"
 	err = CompareNodes(&actual, &expected)
 	actual.Anchor = expected.Anchor
 	if err == nil || err.Error() != "expected Anchor myAnchor, got newAnchor" {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 
 	actual.HeadComment = "# new head comment"
 	err = CompareNodes(&actual, &expected)
 	actual.HeadComment = expected.HeadComment
-	if err == nil || err.Error() != "expected HeadComment '# head comment', got '# new head comment'" {
-		t.Fatalf("unexpected error, %s", err)
+	if err != nil {
+		t.Fatalf("unexpected comment comparison, %s", err)
 	}
 
 	actual.LineComment = "# new line comment"
 	err = CompareNodes(&actual, &expected)
 	actual.LineComment = expected.LineComment
-	if err == nil || err.Error() != "expected LineComment '# line comment', got '# new line comment'" {
-		t.Fatalf("unexpected error, %s", err)
+	if err != nil {
+		t.Fatalf("unexpected comment comparison, %s", err)
 	}
 
 	actual.FootComment = "# new foot comment"
 	err = CompareNodes(&actual, &expected)
 	actual.FootComment = expected.FootComment
-	if err == nil || err.Error() != "expected FootComment '# foot comment', got '# new foot comment'" {
-		t.Fatalf("unexpected error, %s", err)
+	if err != nil {
+		t.Fatalf("unexpected comment comparison, %s", err)
 	}
 
 	actual.Content = append(actual.Content, &yaml.Node{})
 	err = CompareNodes(&actual, &expected)
 	actual.Content = expected.Content
 	if err == nil || err.Error() != "expected 1 children, got 2" {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 }
 
@@ -178,7 +284,7 @@ func TestCompareNodesRecursive(t *testing.T) {
 		},
 	)
 	if err == nil || err.Error() != "1: expected Value 'Expected Value', got 'Actual Value'" {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 }
 
@@ -202,7 +308,7 @@ func TestCompareNodeLists(t *testing.T) {
 		},
 	)
 	if err != nil {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 
 	err = CompareNodeLists(
@@ -221,7 +327,7 @@ func TestCompareNodeLists(t *testing.T) {
 		},
 	)
 	if err == nil || err.Error() != "expected 1 nodes, got 2" {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 
 	err = CompareNodeLists(
@@ -243,6 +349,6 @@ func TestCompareNodeLists(t *testing.T) {
 		},
 	)
 	if err == nil || err.Error() != "1: expected Kind DocumentNode, got AliasNode" {
-		t.Fatalf("unexpected error, %s", err)
+		t.Fatal(err)
 	}
 }
