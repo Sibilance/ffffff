@@ -34,3 +34,7 @@ func TestVoidDocument(t *testing.T) {
 func TestVoidSequence(t *testing.T) {
 	testProcessDocuments(t, 1)
 }
+
+func TestVoidMapping(t *testing.T) {
+	testProcessDocuments(t, 1)
+}
