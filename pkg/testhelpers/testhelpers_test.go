@@ -181,6 +181,46 @@ func TestGetYamlTestCases(t *testing.T) {
 	}
 }
 
+func TestGetYamlTestCasesNil(t *testing.T) {
+	inputs, outputs := GetYamlTestCases(t, 1)
+
+	err := CompareNodeLists(
+		inputs[0],
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind: yaml.ScalarNode,
+						Tag:  "!!null",
+					},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = CompareNodeLists(
+		outputs[0],
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind: yaml.ScalarNode,
+						Tag:  "!!null",
+					},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCompareNodes(t *testing.T) {
 	expected := yaml.Node{
 		Kind:        yaml.DocumentNode,
