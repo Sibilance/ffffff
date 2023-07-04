@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sibilance/ffffff/pkg/yamlhelpers"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,7 +23,7 @@ func GetTestFile(t *testing.T) string {
 
 func CompareNodes(actual, expected *yaml.Node) error {
 	if actual.Kind != expected.Kind {
-		return fmt.Errorf("expected Kind %s, got %s", kindString(expected.Kind), kindString(actual.Kind))
+		return fmt.Errorf("expected Kind %s, got %s", yamlhelpers.KindString(expected.Kind), yamlhelpers.KindString(actual.Kind))
 	}
 
 	if actual.Tag != expected.Tag {
@@ -64,19 +65,17 @@ func CompareNodes(actual, expected *yaml.Node) error {
 	return nil
 }
 
-func kindString(kind yaml.Kind) string {
-	switch kind {
-	case yaml.DocumentNode:
-		return "DocumentNode"
-	case yaml.SequenceNode:
-		return "SequenceNode"
-	case yaml.MappingNode:
-		return "MappingNode"
-	case yaml.ScalarNode:
-		return "ScalarNode"
-	case yaml.AliasNode:
-		return "AliasNode"
-	default:
-		return fmt.Sprint(kind)
+func CompareNodeLists(actual, expected []*yaml.Node) error {
+	if len(actual) != len(expected) {
+		return fmt.Errorf("expected %d nodes, got %d", len(expected), len(actual))
 	}
+
+	for i, expectedNode := range expected {
+		err := CompareNodes(actual[i], expectedNode)
+		if err != nil {
+			return fmt.Errorf("%d: %w", i, err)
+		}
+	}
+
+	return nil
 }

@@ -11,7 +11,7 @@ import (
 func TestGetTestPath(t *testing.T) {
 	testPath := getTestPath(t, 1)
 
-	if !strings.HasSuffix(testPath, "/pkg/testhelpers/helpers_test/TestGetTestPath") {
+	if !strings.HasSuffix(testPath, "/pkg/testhelpers/testhelpers_test/TestGetTestPath") {
 		t.Fatalf("unexpected test path: %s", testPath)
 	}
 
@@ -140,6 +140,71 @@ func TestCompareNodesRecursive(t *testing.T) {
 		},
 	)
 	if err == nil || err.Error() != "1: expected Value 'Expected Value', got 'Actual Value'" {
+		t.Fatalf("unexpected error, %s", err)
+	}
+}
+
+func TestCompareNodeLists(t *testing.T) {
+	err := CompareNodeLists(
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+			},
+			{
+				Kind: yaml.AliasNode,
+			},
+		},
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+			},
+			{
+				Kind: yaml.AliasNode,
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error, %s", err)
+	}
+
+	err = CompareNodeLists(
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+			},
+			{
+				Kind: yaml.AliasNode,
+			},
+		},
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+			},
+		},
+	)
+	if err == nil || err.Error() != "expected 1 nodes, got 2" {
+		t.Fatalf("unexpected error, %s", err)
+	}
+
+	err = CompareNodeLists(
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+			},
+			{
+				Kind: yaml.AliasNode,
+			},
+		},
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+			},
+			{
+				Kind: yaml.DocumentNode,
+			},
+		},
+	)
+	if err == nil || err.Error() != "1: expected Kind DocumentNode, got AliasNode" {
 		t.Fatalf("unexpected error, %s", err)
 	}
 }
