@@ -73,6 +73,31 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 		}
 
 	case yaml.MappingNode:
+		children := node.Content
+		node.Content = nil
+		for i, child := range children {
+			if i%2 == 0 {
+				err := ProcessNode(context.New(fmt.Sprintf("%d(key)", i/2)), child)
+				if err != nil {
+					return err
+				}
+			} else {
+				key := children[i-1]
+				var contextName string
+				if key.Kind == yaml.ScalarNode && key.Tag == "!!str" {
+					contextName = key.Value
+				} else {
+					contextName = fmt.Sprintf("%d(value)", i/2)
+				}
+				err := ProcessNode(context.New(contextName), child)
+				if err != nil {
+					return err
+				}
+				if !IsVoid(key) && !IsVoid(child) {
+					node.Content = append(node.Content, key, child)
+				}
+			}
+		}
 
 	case yaml.ScalarNode:
 
