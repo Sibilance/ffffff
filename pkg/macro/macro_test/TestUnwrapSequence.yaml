@@ -1,0 +1,36 @@
+# Input: Unwrapping works at all
+---
+- !unwrap "Test value"
+
+# Output
+---
+"Test value"
+
+
+# Input: Unwrapping float maintains type
+---
+- !unwrap 3.14
+
+# Output
+---
+3.14
+
+
+# Input: Unwrapping int maintains type
+---
+- !unwrap 3
+
+# Output
+---
+3
+
+
+# Input: The first unwrapped item wins
+---
+- Some value.
+- !unwrap Foo
+- !unwrap Bar
+
+# Output
+---
+"Foo"

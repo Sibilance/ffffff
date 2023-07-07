@@ -1,0 +1,31 @@
+# Input: A scalar cannot be unwrapped into documents
+---
+!unwrap foo
+
+# Error
+---
+"[0]:3:1: cannot unwrap ScalarNode"
+
+
+# Input: A sequence can be unwrapped into documents
+--- !unwrap 
+- Item 1
+- Item 2
+
+# Output
+---
+Item 1
+---
+Item 2
+
+
+# Input: A mapping can be unwrapped into documents
+--- !unwrap 
+Key 1: Value 1
+Key 2: Value 2
+
+# Output
+---
+Key 1: Value 1
+---
+Key 2: Value 2

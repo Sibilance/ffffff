@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	VoidTag = "!void"
+	VoidTag   = "!void"
+	UnwrapTag = "!unwrap"
 )
 
 type Context struct {
@@ -21,6 +22,9 @@ type Context struct {
 
 func (c *Context) path() []string {
 	if c.parent == nil {
+		if c.label == "" {
+			return nil
+		}
 		return []string{c.label}
 	}
 	if c.label != "" {
@@ -46,26 +50,19 @@ func (c *Context) New(label string) *Context {
 
 func ProcessNode(context *Context, node *yaml.Node) error {
 	switch node.Kind {
-	case yaml.DocumentNode:
-		if len(node.Content) != 1 {
-			return context.Error(node, "expected exactly one child node of document")
-		}
-		child := node.Content[0]
-		err := ProcessNode(context.New(""), child)
-		if err != nil {
-			return err
-		}
-		if IsVoid(child) {
-			Void(node)
-		}
-
 	case yaml.SequenceNode:
 		children := node.Content
 		node.Content = nil
 		for i, child := range children {
-			err := ProcessNode(context.New(fmt.Sprint(i)), child)
+			err := ProcessNode(context.New(fmt.Sprintf("[%d]", i)), child)
 			if err != nil {
 				return err
+			}
+			if IsUnwrap(child) {
+				child.Tag = ""
+				*node = *child
+				node.Tag = node.ShortTag()
+				break
 			}
 			if !IsVoid(child) {
 				node.Content = append(node.Content, child)
@@ -77,7 +74,7 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 		node.Content = nil
 		for i, child := range children {
 			if i&1 == 0 {
-				err := ProcessNode(context.New(fmt.Sprintf("%d(key)", i/2)), child)
+				err := ProcessNode(context.New(fmt.Sprintf("[%d](key)", i/2)), child)
 				if err != nil {
 					return err
 				}
@@ -87,7 +84,7 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 				if key.Kind == yaml.ScalarNode && key.Tag == "!!str" {
 					contextName = key.Value
 				} else {
-					contextName = fmt.Sprintf("%d(value)", i/2)
+					contextName = fmt.Sprintf("[%d](value)", i/2)
 				}
 				if !IsVoid(key) {
 					err := ProcessNode(context.New(contextName), child)
@@ -114,21 +111,71 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 
 func ProcessDocuments(context *Context, documents *[]*yaml.Node) error {
 	originalDocuments := *documents
-	*documents = []*yaml.Node{}
+	*documents = nil
 
 	for i, document := range originalDocuments {
+		localContext := context.New(fmt.Sprintf("[%d]", i))
 		if document.Kind != yaml.DocumentNode {
-			return context.Error(
+			return localContext.Error(
 				document,
 				fmt.Sprintf("expected DocumentNode, got %s", yamlhelpers.KindString(document.Kind)),
 			)
 		}
-		err := ProcessNode(context.New(fmt.Sprint(i)), document)
+		if len(document.Content) != 1 {
+			return localContext.Error(document, "expected exactly one child node of document")
+		}
+		child := document.Content[0]
+		err := ProcessNode(localContext, child)
 		if err != nil {
 			return err
 		}
-		if !IsVoid(document) {
+		if !IsVoid(child) {
 			*documents = append(*documents, document)
+		}
+		if IsUnwrap(child) {
+			switch child.Kind {
+			case yaml.SequenceNode:
+				*documents = nil
+				for _, newChild := range child.Content {
+					*documents = append(*documents, &yaml.Node{
+						Kind: yaml.DocumentNode,
+						Content: []*yaml.Node{
+							newChild,
+						},
+						Line:   newChild.Line,
+						Column: newChild.Column,
+					})
+				}
+				return nil
+			case yaml.MappingNode:
+				*documents = nil
+				for i, newValue := range child.Content {
+					if i&1 == 0 {
+						continue
+					}
+					newKey := child.Content[i-1]
+					*documents = append(*documents, &yaml.Node{
+						Kind: yaml.DocumentNode,
+						Content: []*yaml.Node{
+							{
+								Kind: yaml.MappingNode,
+								Tag:  "!!map",
+								Content: []*yaml.Node{
+									newKey,
+									newValue,
+								},
+								Line:   newKey.Line,
+								Column: newKey.Column,
+							},
+						},
+						Line:   newKey.Line,
+						Column: newKey.Column,
+					})
+					fmt.Printf("%+v\n", (*documents)[len(*documents)-1])
+				}
+			default:
+				return localContext.Error(child, fmt.Sprintf("cannot unwrap %s", yamlhelpers.KindString(child.Kind)))
+			}
 		}
 	}
 
@@ -139,6 +186,6 @@ func IsVoid(node *yaml.Node) bool {
 	return node.ShortTag() == VoidTag
 }
 
-func Void(node *yaml.Node) {
-	node.Tag = VoidTag
+func IsUnwrap(node *yaml.Node) bool {
+	return node.ShortTag() == UnwrapTag
 }

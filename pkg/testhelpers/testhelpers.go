@@ -39,15 +39,17 @@ func GetTestYaml(t *testing.T) []*yaml.Node {
 	return getTestYaml(t, 1)
 }
 
-func GetYamlTestCases(t *testing.T, count int) (inputs, outputs [][]*yaml.Node) {
+func GetYamlTestCases(t *testing.T, count int) (inputs, outputs [][]*yaml.Node, errors []string) {
 	type Mode int
 	const (
 		inputPrefix  = "# Input"
 		outputPrefix = "# Output"
+		errorPrefix  = "# Error"
 	)
 	const (
 		inputMode Mode = iota
 		outputMode
+		errorMode
 	)
 	documents := getTestYaml(t, 1)
 
@@ -60,37 +62,58 @@ func GetYamlTestCases(t *testing.T, count int) (inputs, outputs [][]*yaml.Node) 
 
 	mode := inputMode
 	var inputDocuments, outputDocuments []*yaml.Node
+	var errorMessage string
 	for i, document := range documents {
 		if mode == inputMode {
 			inputDocuments = append(inputDocuments, document)
-		} else { // outputMode
+		} else if mode == outputMode {
 			outputDocuments = append(outputDocuments, document)
+		} else if mode == errorMode {
+			if len(document.Content) != 1 {
+				t.Fatal("expected exactly one child of document")
+			}
+			child := document.Content[0]
+			if child.Kind != yaml.ScalarNode {
+				t.Fatal("expected string error message")
+			}
+			errorMessage = child.Value
 		}
 
 		footComment := document.FootComment
 		if i == 0 && strings.HasPrefix(footComment, inputPrefix) {
 			// A bug in the yaml library sometimes attaches comments above the first document
 			// as foot comments to that document. If this happens, try to remove it by searching
-			// for `outputPrefix`.
+			// for `outputPrefix` and `errorPrefix`.
 			index := strings.Index(footComment, "\n"+outputPrefix)
+			if index < 0 {
+				index = strings.Index(footComment, "\n"+errorPrefix)
+			}
 			if index > 0 {
 				footComment = footComment[index+1:]
 			}
 		}
-		if mode == outputMode && strings.HasPrefix(footComment, inputPrefix) {
-			mode = inputMode
-			inputs = append(inputs, inputDocuments)
-			outputs = append(outputs, outputDocuments)
-			inputDocuments = nil
-			outputDocuments = nil
+		if strings.HasPrefix(footComment, inputPrefix) {
+			if mode == outputMode || mode == errorMode {
+				mode = inputMode
+				inputs = append(inputs, inputDocuments)
+				outputs = append(outputs, outputDocuments)
+				errors = append(errors, errorMessage)
+				inputDocuments = nil
+				outputDocuments = nil
+				errorMessage = ""
+			}
 		}
 		if strings.HasPrefix(footComment, outputPrefix) {
 			mode = outputMode
+		}
+		if strings.HasPrefix(footComment, errorPrefix) {
+			mode = errorMode
 		}
 	}
 
 	inputs = append(inputs, inputDocuments)
 	outputs = append(outputs, outputDocuments)
+	errors = append(errors, errorMessage)
 
 	if len(inputs) != count {
 		t.Fatalf("expected %d inputs, got %d", count, len(inputs))
