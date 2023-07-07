@@ -75,13 +75,16 @@ func TestGetTestYaml(t *testing.T) {
 }
 
 func TestGetYamlTestCases(t *testing.T) {
-	inputs, outputs := GetYamlTestCases(t, 2)
+	inputs, outputs, errors := GetYamlTestCases(t, 3)
 
-	if len(inputs) != 2 {
-		t.Fatalf("expected two inputs, got %d", len(inputs))
+	if len(inputs) != 3 {
+		t.Fatalf("expected three inputs, got %d", len(inputs))
 	}
-	if len(outputs) != 2 {
-		t.Fatalf("expected two outputs, got %d", len(outputs))
+	if len(outputs) != 3 {
+		t.Fatalf("expected three outputs, got %d", len(outputs))
+	}
+	if len(errors) != 3 {
+		t.Fatalf("expected three errors, got %d", len(errors))
 	}
 
 	err := CompareNodeLists(
@@ -132,6 +135,10 @@ func TestGetYamlTestCases(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if errors[0] != "" {
+		t.Fatal("expected no error for test case 1")
+	}
+
 	err = CompareNodeLists(
 		inputs[1],
 		[]*yaml.Node{
@@ -179,10 +186,45 @@ func TestGetYamlTestCases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if errors[1] != "" {
+		t.Fatal("expected no error for test case 2")
+	}
+
+	err = CompareNodeLists(
+		inputs[2],
+		[]*yaml.Node{
+			{
+				Kind: yaml.DocumentNode,
+				Content: []*yaml.Node{
+					{
+						Kind:  yaml.ScalarNode,
+						Tag:   "!!str",
+						Value: "input document 3.1",
+					},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = CompareNodeLists(
+		outputs[2],
+		[]*yaml.Node{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if errors[2] != "error message 3.1" {
+		t.Fatalf("expected error for test case 3, got '%s'", errors[2])
+	}
 }
 
 func TestGetYamlTestCasesNil(t *testing.T) {
-	inputs, outputs := GetYamlTestCases(t, 1)
+	inputs, outputs, _ := GetYamlTestCases(t, 1)
 
 	err := CompareNodeLists(
 		inputs[0],

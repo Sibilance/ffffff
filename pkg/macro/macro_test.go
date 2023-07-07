@@ -8,22 +8,32 @@ import (
 )
 
 func testProcessDocuments(t *testing.T, count int) {
-	inputs, outputs := testhelpers.GetYamlTestCases(t, count)
+	inputs, outputs, errors := testhelpers.GetYamlTestCases(t, count)
 
 	for i, input := range inputs {
 		output := outputs[i]
+		errorMessage := errors[i]
 
 		err := macro.ProcessDocuments(&macro.Context{}, &input)
-		if err != nil {
-			t.Fatal(err)
-		}
 
-		err = testhelpers.CompareNodeLists(
-			input,
-			output,
-		)
-		if err != nil {
-			t.Fatal(err)
+		if errorMessage != "" {
+			if err == nil {
+				t.Fatalf("no error, expected '%s'", errorMessage)
+			} else if err.Error() != errorMessage {
+				t.Fatalf("expected error '%s', got '%s'", errorMessage, err)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = testhelpers.CompareNodeLists(
+				input,
+				output,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 }
@@ -42,4 +52,12 @@ func TestVoidMapping(t *testing.T) {
 
 func TestVoidNested(t *testing.T) {
 	testProcessDocuments(t, 3)
+}
+
+func TestUnwrapDocument(t *testing.T) {
+	testProcessDocuments(t, 3)
+}
+
+func TestUnwrapSequence(t *testing.T) {
+	testProcessDocuments(t, 4)
 }
