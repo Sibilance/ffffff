@@ -1,8 +1,9 @@
-package macro
+package macro_test
 
 import (
 	"testing"
 
+	"github.com/sibilance/ffffff/pkg/macro"
 	"github.com/sibilance/ffffff/pkg/testhelpers"
 )
 
@@ -12,7 +13,7 @@ func testProcessDocuments(t *testing.T, count int) {
 	for i, input := range inputs {
 		output := outputs[i]
 
-		err := ProcessDocuments(&Context{}, &input)
+		err := macro.ProcessDocuments(&macro.Context{}, &input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -39,6 +40,6 @@ func TestVoidMapping(t *testing.T) {
 	testProcessDocuments(t, 1)
 }
 
-func TestVoidRecursive(t *testing.T) {
+func TestVoidNested(t *testing.T) {
 	testProcessDocuments(t, 3)
 }

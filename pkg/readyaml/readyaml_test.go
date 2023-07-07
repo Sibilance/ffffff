@@ -1,4 +1,4 @@
-package readyaml_test // Separate package to avoid dependency cycle with testhelpers.
+package readyaml_test
 
 import (
 	"fmt"
