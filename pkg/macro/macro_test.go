@@ -18,13 +18,13 @@ func testProcessDocuments(t *testing.T, count int) {
 
 		if errorMessage != "" {
 			if err == nil {
-				t.Fatalf("no error, expected '%s'", errorMessage)
+				t.Fatalf("test %d: no error, expected '%s'", i, errorMessage)
 			} else if err.Error() != errorMessage {
-				t.Fatalf("expected error '%s', got '%s'", errorMessage, err)
+				t.Fatalf("test %d: expected error '%s', got '%s'", i, errorMessage, err)
 			}
 		} else {
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("test %d: %s", i, err)
 			}
 
 			err = testhelpers.CompareNodeLists(
@@ -32,7 +32,7 @@ func testProcessDocuments(t *testing.T, count int) {
 				output,
 			)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("test %d: %s", i, err)
 			}
 		}
 	}
@@ -59,5 +59,9 @@ func TestUnwrapDocument(t *testing.T) {
 }
 
 func TestUnwrapSequence(t *testing.T) {
-	testProcessDocuments(t, 4)
+	testProcessDocuments(t, 3)
+}
+
+func TestUnwrapMapping(t *testing.T) {
+	testProcessDocuments(t, 2)
 }

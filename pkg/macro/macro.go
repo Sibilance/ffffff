@@ -54,17 +54,36 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 		children := node.Content
 		node.Content = nil
 		for i, child := range children {
-			err := ProcessNode(context.New(fmt.Sprintf("[%d]", i)), child)
+			localContext := context.New(fmt.Sprintf("[%d]", i))
+			err := ProcessNode(localContext, child)
 			if err != nil {
 				return err
 			}
 			if IsUnwrap(child) {
-				child.Tag = ""
-				*node = *child
-				node.Tag = node.ShortTag()
-				break
-			}
-			if !IsVoid(child) {
+				switch child.Kind {
+				case yaml.SequenceNode:
+					node.Content = append(node.Content, child.Content...)
+				case yaml.MappingNode:
+					for i, newValue := range child.Content {
+						if i&1 == 0 {
+							continue
+						}
+						newKey := child.Content[i-1]
+						node.Content = append(node.Content, &yaml.Node{
+							Kind: yaml.MappingNode,
+							Tag:  "!!map",
+							Content: []*yaml.Node{
+								newKey,
+								newValue,
+							},
+							Line:   newKey.Line,
+							Column: newKey.Column,
+						})
+					}
+				default:
+					return localContext.Error(child, fmt.Sprintf("cannot unwrap %s", yamlhelpers.KindString(child.Kind)))
+				}
+			} else if !IsVoid(child) {
 				node.Content = append(node.Content, child)
 			}
 		}
@@ -73,8 +92,9 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 		children := node.Content
 		node.Content = nil
 		for i, child := range children {
+			keyContext := context.New(fmt.Sprintf("[%d](key)", i/2))
 			if i&1 == 0 {
-				err := ProcessNode(context.New(fmt.Sprintf("[%d](key)", i/2)), child)
+				err := ProcessNode(keyContext, child)
 				if err != nil {
 					return err
 				}
@@ -86,12 +106,17 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 				} else {
 					contextName = fmt.Sprintf("[%d](value)", i/2)
 				}
-				if !IsVoid(key) {
-					err := ProcessNode(context.New(contextName), child)
+				if IsUnwrap(key) {
+					return keyContext.Error(key, "cannot unwrap a mapping key")
+				} else if !IsVoid(key) {
+					valueContext := context.New(contextName)
+					err := ProcessNode(valueContext, child)
 					if err != nil {
 						return err
 					}
-					if !IsVoid(child) {
+					if IsUnwrap(child) {
+						return valueContext.Error(child, "cannot unwrap a mapping value")
+					} else if !IsVoid(child) {
 						node.Content = append(node.Content, key, child)
 					}
 				}
@@ -129,13 +154,9 @@ func ProcessDocuments(context *Context, documents *[]*yaml.Node) error {
 		if err != nil {
 			return err
 		}
-		if !IsVoid(child) {
-			*documents = append(*documents, document)
-		}
 		if IsUnwrap(child) {
 			switch child.Kind {
 			case yaml.SequenceNode:
-				*documents = nil
 				for _, newChild := range child.Content {
 					*documents = append(*documents, &yaml.Node{
 						Kind: yaml.DocumentNode,
@@ -146,9 +167,7 @@ func ProcessDocuments(context *Context, documents *[]*yaml.Node) error {
 						Column: newChild.Column,
 					})
 				}
-				return nil
 			case yaml.MappingNode:
-				*documents = nil
 				for i, newValue := range child.Content {
 					if i&1 == 0 {
 						continue
@@ -171,11 +190,12 @@ func ProcessDocuments(context *Context, documents *[]*yaml.Node) error {
 						Line:   newKey.Line,
 						Column: newKey.Column,
 					})
-					fmt.Printf("%+v\n", (*documents)[len(*documents)-1])
 				}
 			default:
 				return localContext.Error(child, fmt.Sprintf("cannot unwrap %s", yamlhelpers.KindString(child.Kind)))
 			}
+		} else if !IsVoid(child) {
+			*documents = append(*documents, document)
 		}
 	}
 
