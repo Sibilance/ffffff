@@ -141,16 +141,19 @@ func CompareNodes(actual, expected *yaml.Node) error {
 		return fmt.Errorf("expected Anchor %s, got %s", expected.Anchor, actual.Anchor)
 	}
 
-	if len(actual.Content) != len(expected.Content) {
-		return fmt.Errorf("expected %d children, got %d", len(expected.Content), len(actual.Content))
-	}
-
 	for i, expectedChild := range expected.Content {
+		if i >= len(actual.Content) {
+			break
+		}
 		actualChild := actual.Content[i]
 		err := CompareNodes(actualChild, expectedChild)
 		if err != nil {
 			return fmt.Errorf("%d: %w", i, err)
 		}
+	}
+
+	if len(actual.Content) != len(expected.Content) {
+		return fmt.Errorf("expected %d children, got %d", len(expected.Content), len(actual.Content))
 	}
 
 	return nil
@@ -162,10 +165,17 @@ func CompareNodeLists(actual, expected []*yaml.Node) error {
 	}
 
 	for i, expectedNode := range expected {
+		if i >= len(actual) {
+			break
+		}
 		err := CompareNodes(actual[i], expectedNode)
 		if err != nil {
 			return fmt.Errorf("%d: %w", i, err)
 		}
+	}
+
+	if len(actual) != len(expected) {
+		return fmt.Errorf("expected %d nodes, got %d", len(expected), len(actual))
 	}
 
 	return nil

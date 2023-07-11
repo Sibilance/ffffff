@@ -1,36 +1,39 @@
-# Input: Unwrapping works at all
+# Input: Cannot unwrap a scalar
 ---
 - !unwrap "Test value"
 
-# Output
+# Error
 ---
-"Test value"
+"[0].[0]:3:3: cannot unwrap ScalarNode"
 
 
-# Input: Unwrapping float maintains type
+# Input: Unwrapping a sequence
 ---
-- !unwrap 3.14
-
-# Output
----
-3.14
-
-
-# Input: Unwrapping int maintains type
----
-- !unwrap 3
+- First Item
+- !unwrap 
+  - Nested Item 1
+  - Nested Item 2
+- Last Item
 
 # Output
 ---
-3
+- First Item
+- Nested Item 1
+- Nested Item 2
+- Last Item
 
 
-# Input: The first unwrapped item wins
+# Input: Unwrapping a map into a sequence
 ---
-- Some value.
-- !unwrap Foo
-- !unwrap Bar
+- First Item
+- !unwrap 
+  Key1: Value1
+  Key2: Value2
+- Last Item
 
 # Output
 ---
-"Foo"
+- First Item
+- Key1: Value1
+- Key2: Value2
+- Last Item

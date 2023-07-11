@@ -8,24 +8,40 @@
 
 
 # Input: A sequence can be unwrapped into documents
+---
+First Document
 --- !unwrap 
 - Item 1
 - Item 2
+---
+Last Document
 
 # Output
+---
+First Document
 ---
 Item 1
 ---
 Item 2
+---
+Last Document
 
 
 # Input: A mapping can be unwrapped into documents
+---
+First Document
 --- !unwrap 
 Key 1: Value 1
 Key 2: Value 2
+---
+Last Document
 
 # Output
+---
+First Document
 ---
 Key 1: Value 1
 ---
 Key 2: Value 2
+---
+Last Document
