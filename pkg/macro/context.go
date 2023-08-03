@@ -46,11 +46,3 @@ func (c *Context) New(label string) *Context {
 		label:  label,
 	}
 }
-
-func IsVoid(node *yaml.Node) bool {
-	return node.ShortTag() == VoidTag
-}
-
-func IsUnwrap(node *yaml.Node) bool {
-	return node.ShortTag() == UnwrapTag
-}
