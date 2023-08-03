@@ -7,11 +7,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	VoidTag   = "!void"
-	UnwrapTag = "!unwrap"
-)
-
 type Context struct {
 	parent *Context
 	label  string
