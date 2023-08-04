@@ -1,0 +1,127 @@
+# Input: Empty sequence
+---
+[]
+
+# Output
+---
+false
+
+# Input: Non-empty sequence
+---
+- []
+
+# Output
+---
+true
+
+# Input: Empty mapping
+---
+{}
+
+# Output
+---
+false
+
+# Input: Non-empty mapping
+---
+Key: {}
+
+# Output
+---
+true
+
+# Input: Null
+---
+~
+
+# Output
+---
+false
+
+# Input: Bool (true)
+---
+true
+
+# Output
+---
+true
+
+# Input: Bool (false)
+---
+false
+
+# Output
+---
+false
+
+# Input: Positive integer
+---
+4
+
+# Output
+---
+true
+
+# Input: Negative integer
+---
+-1
+
+# Output
+---
+true
+
+# Input: Zero integer
+---
+0
+
+# Output
+---
+false
+
+# Input: Positive float
+---
+6.022e23
+
+# Output
+---
+true
+
+# Input: Negative float
+---
+-3.14
+
+# Output
+---
+true
+
+# Input: Zero float
+---
+0.0
+
+# Output
+---
+false
+
+# Input: Non-empty string
+---
+"hello world!"
+
+# Output
+---
+true
+
+# Input: Empty string
+---
+""
+
+# Output
+---
+false
+
+# Input: Unknown tag
+---
+!MyTag ""
+
+# Output
+---
+true
