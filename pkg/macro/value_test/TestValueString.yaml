@@ -1,0 +1,17 @@
+# Input: Some YAML document.
+---
+key 1: value 1
+list:
+  - item 1
+  - item 2
+
+# Output
+---
+|
+  # Input: Some YAML document.
+  key 1: value 1
+  list:
+    - item 1
+    - item 2
+
+  # Output

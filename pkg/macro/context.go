@@ -7,16 +7,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	VoidTag   = "!void"
-	UnwrapTag = "!unwrap"
-)
-
 type Context struct {
 	parent *Context
 	label  string
 
-	// Builtins and globals will go here.
+	locals map[string]Value
 }
 
 func (c *Context) path() []string {
@@ -44,13 +39,6 @@ func (c *Context) New(label string) *Context {
 	return &Context{
 		parent: c,
 		label:  label,
+		locals: c.locals,
 	}
-}
-
-func IsVoid(node *yaml.Node) bool {
-	return node.ShortTag() == VoidTag
-}
-
-func IsUnwrap(node *yaml.Node) bool {
-	return node.ShortTag() == UnwrapTag
 }
