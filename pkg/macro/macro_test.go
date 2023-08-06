@@ -14,7 +14,7 @@ func testProcessDocuments(t *testing.T, count int) {
 		output := outputs[i]
 		errorMessage := errors[i]
 
-		err := macro.ProcessDocuments(&macro.Context{}, &input)
+		err := macro.ProcessDocuments(macro.DefaultRootContext(), &input)
 
 		if errorMessage != "" {
 			if err == nil {

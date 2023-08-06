@@ -16,11 +16,11 @@ func processSequenceNode(context *Context, node *yaml.Node) error {
 		if err != nil {
 			return err
 		}
-		if IsUnwrap(child) {
+		if yamlhelpers.IsUnwrap(child) {
 			switch child.Kind {
-			case yaml.SequenceNode:
+			case yamlhelpers.UnwrapSequenceNode:
 				node.Content = append(node.Content, child.Content...)
-			case yaml.MappingNode:
+			case yamlhelpers.UnwrapMappingNode:
 				for i, newValue := range child.Content {
 					if i&1 == 0 {
 						continue
@@ -40,7 +40,7 @@ func processSequenceNode(context *Context, node *yaml.Node) error {
 			default:
 				return localContext.Error(child, fmt.Sprintf("cannot unwrap %s", yamlhelpers.KindString(child.Kind)))
 			}
-		} else if !IsVoid(child) {
+		} else if !yamlhelpers.IsVoid(child) {
 			node.Content = append(node.Content, child)
 		}
 	}
@@ -66,17 +66,17 @@ func processMappingNode(context *Context, node *yaml.Node) error {
 			} else {
 				contextName = fmt.Sprintf("[%d](value)", i/2)
 			}
-			if IsUnwrap(key) {
+			if yamlhelpers.IsUnwrap(key) {
 				return keyContext.Error(key, "cannot unwrap a mapping key")
-			} else if !IsVoid(key) {
+			} else if !yamlhelpers.IsVoid(key) {
 				valueContext := context.New(contextName)
 				err := ProcessNode(valueContext, child)
 				if err != nil {
 					return err
 				}
-				if IsUnwrap(child) {
+				if yamlhelpers.IsUnwrap(child) {
 					return valueContext.Error(child, "cannot unwrap a mapping value")
-				} else if !IsVoid(child) {
+				} else if !yamlhelpers.IsVoid(child) {
 					node.Content = append(node.Content, key, child)
 				}
 			}
@@ -89,10 +89,16 @@ func processMappingNode(context *Context, node *yaml.Node) error {
 func ProcessNode(context *Context, node *yaml.Node) error {
 	switch node.Kind {
 	case yaml.SequenceNode:
-		return processSequenceNode(context, node)
+		err := processSequenceNode(context, node)
+		if err != nil {
+			return err
+		}
 
 	case yaml.MappingNode:
-		return processMappingNode(context, node)
+		err := processMappingNode(context, node)
+		if err != nil {
+			return err
+		}
 
 	case yaml.ScalarNode:
 
@@ -100,6 +106,14 @@ func ProcessNode(context *Context, node *yaml.Node) error {
 
 	default:
 		return context.Error(node, fmt.Sprintf("unexpected node kind, %s", yamlhelpers.KindString(node.Kind)))
+	}
+
+	macro, ok := context.macros[node.ShortTag()]
+	if ok {
+		err := macro(context, node)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

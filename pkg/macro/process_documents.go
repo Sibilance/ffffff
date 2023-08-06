@@ -27,9 +27,9 @@ func ProcessDocuments(context *Context, documents *[]*yaml.Node) error {
 		if err != nil {
 			return err
 		}
-		if IsUnwrap(child) {
+		if yamlhelpers.IsUnwrap(child) {
 			switch child.Kind {
-			case yaml.SequenceNode:
+			case yamlhelpers.UnwrapSequenceNode:
 				for _, newChild := range child.Content {
 					*documents = append(*documents, &yaml.Node{
 						Kind: yaml.DocumentNode,
@@ -40,7 +40,7 @@ func ProcessDocuments(context *Context, documents *[]*yaml.Node) error {
 						Column: newChild.Column,
 					})
 				}
-			case yaml.MappingNode:
+			case yamlhelpers.UnwrapMappingNode:
 				for i, newValue := range child.Content {
 					if i&1 == 0 {
 						continue
@@ -67,7 +67,7 @@ func ProcessDocuments(context *Context, documents *[]*yaml.Node) error {
 			default:
 				return localContext.Error(child, fmt.Sprintf("cannot unwrap %s", yamlhelpers.KindString(child.Kind)))
 			}
-		} else if !IsVoid(child) {
+		} else if !yamlhelpers.IsVoid(child) {
 			*documents = append(*documents, document)
 		}
 	}
