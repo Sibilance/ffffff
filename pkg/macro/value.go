@@ -1,6 +1,7 @@
 package macro
 
 import (
+	"bytes"
 	"fmt"
 
 	"gopkg.in/yaml.v3"
@@ -53,4 +54,21 @@ func (v Value) Bool() bool {
 	default:
 		panic(fmt.Errorf("undefined Kind %d", v.Kind))
 	}
+}
+
+func (v Value) String() string {
+	buf := new(bytes.Buffer)
+	encoder := yaml.NewEncoder(buf)
+	encoder.SetIndent(2)
+
+	err := encoder.Encode(&v.Node)
+	if err != nil {
+		panic(fmt.Errorf("unexpected error encoding Value: %w", err))
+	}
+	encoder.Close()
+	if err != nil {
+		panic(fmt.Errorf("unexpected error encoding Value: %w", err))
+	}
+
+	return buf.String()
 }

@@ -57,3 +57,27 @@ func TestValueBoolAlias(t *testing.T) {
 		}
 	}
 }
+
+func TestValueString(t *testing.T) {
+	inputs, outputs, _ := testhelpers.GetYamlTestCases(t, 1)
+
+	for i, input := range inputs {
+		if len(input) != 1 {
+			t.Fatal("expected exactly one input")
+		}
+		if len(outputs[i]) != 1 {
+			t.Fatal("expected exactly one output")
+		}
+		var output string
+		err := outputs[i][0].Decode(&output)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		actual := Value{*input[0]}.String()
+
+		if actual != output {
+			t.Fatalf("test %d: expected:\n%v\nbut got:\n%v", i, output, actual)
+		}
+	}
+}

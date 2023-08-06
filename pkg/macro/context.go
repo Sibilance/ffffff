@@ -11,7 +11,7 @@ type Context struct {
 	parent *Context
 	label  string
 
-	// Builtins and globals will go here.
+	locals map[string]Value
 }
 
 func (c *Context) path() []string {
@@ -39,5 +39,6 @@ func (c *Context) New(label string) *Context {
 	return &Context{
 		parent: c,
 		label:  label,
+		locals: c.locals,
 	}
 }
