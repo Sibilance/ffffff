@@ -4,7 +4,7 @@
 
 # Error
 ---
-"[0].[0]:3:3: cannot unwrap ScalarNode"
+"[0].[0]:3:3: cannot unwrap UnwrapScalarNode"
 
 
 # Input: Unwrapping a sequence

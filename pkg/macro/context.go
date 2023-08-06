@@ -11,7 +11,14 @@ type Context struct {
 	parent *Context
 	label  string
 
+	macros map[string]Macro
 	locals map[string]Value
+}
+
+func DefaultRootContext() *Context {
+	return &Context{
+		macros: DefaultMacros(),
+	}
 }
 
 func (c *Context) path() []string {
@@ -39,6 +46,7 @@ func (c *Context) New(label string) *Context {
 	return &Context{
 		parent: c,
 		label:  label,
+		macros: c.macros,
 		locals: c.locals,
 	}
 }
