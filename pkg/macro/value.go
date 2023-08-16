@@ -1,74 +1,90 @@
 package macro
 
-import (
-	"bytes"
-	"fmt"
+import "fmt"
 
-	"gopkg.in/yaml.v3"
+type ValueKind uint8
+
+const (
+	NullValueKind ValueKind = iota
+	BoolValueKind
+	IntValueKind
+	FloatValueKind
+	StringValueKind
+	BytesValueKind
+	ListValueKind
+	StringMapValueKind
+	ValueMapValueKind
 )
 
 type Value struct {
-	yaml.Node
+	Kind           ValueKind
+	BoolValue      bool
+	IntValue       int64
+	FloatValue     float64
+	StringValue    string
+	BytesValue     []byte
+	ListValue      []*Value
+	StringMapValue map[string]*Value
+	ValueMapValue  map[*Value]*Value
 }
 
-func (v Value) Bool() bool {
+func NullValue() *Value {
+	return &Value{}
+}
+
+func BoolValue(v bool) *Value {
+	return &Value{Kind: BoolValueKind, BoolValue: v}
+}
+
+func IntValue(v int64) *Value {
+	return &Value{Kind: IntValueKind, IntValue: v}
+}
+
+func FloatValue(v float64) *Value {
+	return &Value{Kind: FloatValueKind, FloatValue: v}
+}
+
+func StringValue(v string) *Value {
+	return &Value{Kind: StringValueKind, StringValue: v}
+}
+
+func BytesValue(v []byte) *Value {
+	return &Value{Kind: BytesValueKind, BytesValue: v}
+}
+
+func ListValue(v []*Value) *Value {
+	return &Value{Kind: ListValueKind, ListValue: v}
+}
+
+func StringMapValue(v map[string]*Value) *Value {
+	return &Value{Kind: StringMapValueKind, StringMapValue: v}
+}
+
+func ValueMapValue(v map[*Value]*Value) *Value {
+	return &Value{Kind: ValueMapValueKind, ValueMapValue: v}
+}
+
+func (v *Value) Bool() bool {
 	switch v.Kind {
-	case yaml.DocumentNode:
-		return Value{*v.Content[0]}.Bool()
-	case yaml.SequenceNode:
-		return len(v.Content) > 0
-	case yaml.MappingNode:
-		return len(v.Content) > 0
-	case yaml.ScalarNode:
-		switch v.Node.ShortTag() {
-		case "!!null":
-			return false
-		case "!!bool":
-			var ret bool
-			err := v.Node.Decode(&ret)
-			if err != nil {
-				return true
-			}
-			return ret
-		case "!!int":
-			var ret int64
-			err := v.Node.Decode(&ret)
-			if err != nil {
-				return true
-			}
-			return ret != 0
-		case "!!float":
-			var ret float64
-			err := v.Node.Decode(&ret)
-			if err != nil {
-				return true
-			}
-			return ret != 0
-		case "!!str":
-			return len(v.Value) > 0
-		default:
-			return true
-		}
-	case yaml.AliasNode:
-		return Value{*v.Alias}.Bool()
+	case NullValueKind:
+		return false
+	case BoolValueKind:
+		return v.BoolValue
+	case IntValueKind:
+		return v.IntValue != 0
+	case FloatValueKind:
+		return v.FloatValue != 0
+	case StringValueKind:
+		return len(v.StringValue) > 0
+	case BytesValueKind:
+		return len(v.BytesValue) > 0
+	case ListValueKind:
+		return len(v.ListValue) > 0
+	case StringMapValueKind:
+		return len(v.StringMapValue) > 0
+	case ValueMapValueKind:
+		return len(v.ValueMapValue) > 0
 	default:
-		panic(fmt.Errorf("undefined Kind %d", v.Kind))
+		panic(fmt.Sprintf("unexpected ValueKind %d", v.Kind))
 	}
-}
-
-func (v Value) String() string {
-	buf := new(bytes.Buffer)
-	encoder := yaml.NewEncoder(buf)
-	encoder.SetIndent(2)
-
-	err := encoder.Encode(&v.Node)
-	if err != nil {
-		panic(fmt.Errorf("unexpected error encoding Value: %w", err))
-	}
-	encoder.Close()
-	if err != nil {
-		panic(fmt.Errorf("unexpected error encoding Value: %w", err))
-	}
-
-	return buf.String()
 }

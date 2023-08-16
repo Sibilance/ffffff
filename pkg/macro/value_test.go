@@ -2,82 +2,57 @@ package macro
 
 import (
 	"testing"
-
-	"github.com/sibilance/ffffff/pkg/testhelpers"
 )
 
 func TestValueBool(t *testing.T) {
-	inputs, outputs, _ := testhelpers.GetYamlTestCases(t, 16)
-
-	for i, input := range inputs {
-		if len(input) != 1 {
-			t.Fatalf("expected exactly one input")
-		}
-		if len(outputs[i]) != 1 {
-			t.Fatalf("expected exactly one output")
-		}
-		var output bool
-		err := outputs[i][0].Decode(&output)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		actual := Value{*input[0]}.Bool()
-
-		if actual != output {
-			t.Fatalf("test %d: expected %v, got %v", i, output, actual)
-		}
+	if NullValue().Bool() != false {
+		t.Fatal("NullValue expected to be false")
 	}
-}
-
-func TestValueBoolAlias(t *testing.T) {
-	inputs, outputs, _ := testhelpers.GetYamlTestCases(t, 2)
-
-	for i, input := range inputs {
-		if len(input) != 1 {
-			t.Fatal("expected exactly one input")
-		}
-		if len(outputs[i]) != 1 {
-			t.Fatal("expected exactly one output")
-		}
-		var output bool
-		err := outputs[i][0].Decode(&output)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(input[0].Content[0].Content) != 2 {
-			t.Fatal("expected exactly two items")
-		}
-
-		actual := Value{*input[0].Content[0].Content[1]}.Bool()
-
-		if actual != output {
-			t.Fatalf("test %d: expected %v, got %v", i, output, actual)
-		}
+	if BoolValue(false).Bool() != false {
+		t.Fatal("BoolValue{false} expected to be false")
 	}
-}
-
-func TestValueString(t *testing.T) {
-	inputs, outputs, _ := testhelpers.GetYamlTestCases(t, 1)
-
-	for i, input := range inputs {
-		if len(input) != 1 {
-			t.Fatal("expected exactly one input")
-		}
-		if len(outputs[i]) != 1 {
-			t.Fatal("expected exactly one output")
-		}
-		var output string
-		err := outputs[i][0].Decode(&output)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		actual := Value{*input[0]}.String()
-
-		if actual != output {
-			t.Fatalf("test %d: expected:\n%v\nbut got:\n%v", i, output, actual)
-		}
+	if BoolValue(true).Bool() != true {
+		t.Fatal("BoolValue{true} expected to be true")
 	}
+	if IntValue(0).Bool() != false {
+		t.Fatal("IntValue{0} expected to be false")
+	}
+	if IntValue(1).Bool() != true {
+		t.Fatal("IntValue{1} expected to be true")
+	}
+	if IntValue(-1).Bool() != true {
+		t.Fatal("IntValue{-1} expected to be true")
+	}
+	if FloatValue(0).Bool() != false {
+		t.Fatal("FloatValue{0} expected to be false")
+	}
+	if FloatValue(3.14).Bool() != true {
+		t.Fatal("FloatValue{3.14} expected to be true")
+	}
+	if FloatValue(-1.0/12).Bool() != true {
+		t.Fatal("FloatValue{-1.0/12} expected to be true")
+	}
+	if StringValue("").Bool() != false {
+		t.Fatal("StringValue{\"\"} expected to be false")
+	}
+	if StringValue("hello").Bool() != true {
+		t.Fatal("StringValue{\"hello\"} expected to be true")
+	}
+	if BytesValue([]byte("")).Bool() != false {
+		t.Fatal("BytesValue{\"\"} expected to be false")
+	}
+	if BytesValue([]byte("hello")).Bool() != true {
+		t.Fatal("BytesValue{\"hello\"} expected to be true")
+	}
+	if ListValue([]*Value{}).Bool() != false {
+		t.Fatal("ListValue{} expected to be false")
+	}
+	if ListValue([]*Value{NullValue()}).Bool() != true {
+		t.Fatal("ListValue{NullValue} expected to be true")
+	}
+	if StringMapValue(map[string]*Value{}).Bool() != false {
+		t.Fatal("StringMapValue{} expected to be false")
+	}
+	// StringMapValue
+	// ValueMapValue
 }
