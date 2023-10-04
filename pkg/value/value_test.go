@@ -2,6 +2,7 @@ package value
 
 import (
 	"errors"
+	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -68,4 +69,20 @@ func TestBoolValue(t *testing.T) {
 	assertUnmarshalYAML(t, &BoolValue{}, `true`, &BoolValue{true}, nil)
 	assertUnmarshalYAML(t, &BoolValue{}, `0`, nil,
 		errors.New("cannot unmarshal !!int into bool"))
+}
+
+func TestIntValue(t *testing.T) {
+	assertBool(t, &IntValue{*big.NewInt(0)}, false)
+	assertBool(t, &IntValue{*big.NewInt(1)}, true)
+	assertString(t, &IntValue{*big.NewInt(123)}, "123")
+	intValue, _ := (&big.Int{}).SetString("-12345678901234567890", 0)
+	assertString(t, &IntValue{*intValue}, "-12345678901234567890")
+	assertMarshalYAML(t, &IntValue{*big.NewInt(123)}, `123`)
+	assertMarshalYAML(t, &IntValue{*intValue}, `!!int -12345678901234567890`)
+	assertUnmarshalYAML(t, &IntValue{}, `-12345678901234567890`, &IntValue{*intValue}, nil)
+	assertUnmarshalYAML(t, &IntValue{}, `123`, &IntValue{*big.NewInt(123)}, nil)
+	assertUnmarshalYAML(t, &IntValue{}, `abc`, nil,
+		errors.New("cannot unmarshal !!str into int"))
+	assertUnmarshalYAML(t, &IntValue{}, `!!int abc`, nil,
+		errors.New("cannot unmarshal value \"abc\" into int"))
 }

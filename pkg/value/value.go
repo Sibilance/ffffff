@@ -65,8 +65,33 @@ type IntValue struct {
 	value big.Int
 }
 
-func (v *IntValue) Bool() bool {
+func (v IntValue) Bool() bool {
 	return v.value.Sign() != 0
+}
+
+func (v IntValue) String() string {
+	return v.value.String()
+}
+
+func (v IntValue) MarshalYAML() (interface{}, error) {
+	n := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "!!int",
+		Value: v.String(),
+	}
+	return n, nil
+}
+
+func (v *IntValue) UnmarshalYAML(node *yaml.Node) error {
+	// Yaml library can misidentify long integers as floats.
+	if node.ShortTag() != "!!int" && node.ShortTag() != "!!float" {
+		return fmt.Errorf("cannot unmarshal %s into int", node.ShortTag())
+	}
+	_, success := v.value.SetString(node.Value, 0)
+	if !success {
+		return fmt.Errorf("cannot unmarshal value \"%s\" into int", node.Value)
+	}
+	return nil
 }
 
 type StringValue struct {
