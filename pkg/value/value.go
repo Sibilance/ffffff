@@ -73,7 +73,7 @@ func (v IntValue) String() string {
 	return v.value.String()
 }
 
-func (v IntValue) MarshalYAML() (interface{}, error) {
+func (v *IntValue) MarshalYAML() (interface{}, error) {
 	n := &yaml.Node{
 		Kind:  yaml.ScalarNode,
 		Tag:   "!!int",
@@ -111,5 +111,8 @@ func (v StringValue) MarshalYAML() (interface{}, error) {
 }
 
 func (v *StringValue) UnmarshalYAML(node *yaml.Node) error {
+	if node.ShortTag() != "!!str" {
+		return fmt.Errorf("cannot unmarshal %s into string", node.ShortTag())
+	}
 	return node.Decode(&v.value)
 }

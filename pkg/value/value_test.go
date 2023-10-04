@@ -86,3 +86,16 @@ func TestIntValue(t *testing.T) {
 	assertUnmarshalYAML(t, &IntValue{}, `!!int abc`, nil,
 		errors.New("cannot unmarshal value \"abc\" into int"))
 }
+
+func TestStringValue(t *testing.T) {
+	assertBool(t, &StringValue{""}, false)
+	assertBool(t, &StringValue{"hello world"}, true)
+	assertString(t, &StringValue{""}, "")
+	assertString(t, &StringValue{"hello world"}, "hello world")
+	assertMarshalYAML(t, &StringValue{""}, `""`)
+	assertMarshalYAML(t, &StringValue{"hello world"}, `hello world`)
+	assertUnmarshalYAML(t, &StringValue{}, `hello world`, &StringValue{"hello world"}, nil)
+	assertUnmarshalYAML(t, &StringValue{}, `!!str 123`, &StringValue{"123"}, nil)
+	assertUnmarshalYAML(t, &StringValue{}, `123`, nil,
+		errors.New("cannot unmarshal !!int into string"))
+}
