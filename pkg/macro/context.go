@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sibilance/ffffff/pkg/value"
 	"gopkg.in/yaml.v3"
 )
 
@@ -12,7 +13,7 @@ type Context struct {
 	label  string
 
 	macros map[string]Macro
-	locals map[string]Value
+	locals map[string]value.Value
 }
 
 func DefaultRootContext() *Context {
