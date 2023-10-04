@@ -3,6 +3,7 @@ package value
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -10,7 +11,7 @@ import (
 type Value interface {
 	Bool() bool
 	String() string
-	MarshalYAML() (interface{}, error)
+	MarshalYAML() (any, error)
 	UnmarshalYAML(*yaml.Node) error
 }
 
@@ -24,7 +25,7 @@ func (v NullValue) String() string {
 	return "null"
 }
 
-func (v NullValue) MarshalYAML() (interface{}, error) {
+func (v NullValue) MarshalYAML() (any, error) {
 	return nil, nil
 }
 
@@ -50,7 +51,7 @@ func (v BoolValue) String() string {
 	return "false"
 }
 
-func (v BoolValue) MarshalYAML() (interface{}, error) {
+func (v BoolValue) MarshalYAML() (any, error) {
 	return v.value, nil
 }
 
@@ -65,15 +66,15 @@ type IntValue struct {
 	value big.Int
 }
 
-func (v IntValue) Bool() bool {
+func (v *IntValue) Bool() bool {
 	return v.value.Sign() != 0
 }
 
-func (v IntValue) String() string {
+func (v *IntValue) String() string {
 	return v.value.String()
 }
 
-func (v *IntValue) MarshalYAML() (interface{}, error) {
+func (v *IntValue) MarshalYAML() (any, error) {
 	n := &yaml.Node{
 		Kind:  yaml.ScalarNode,
 		Tag:   "!!int",
@@ -94,6 +95,34 @@ func (v *IntValue) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+type FloatValue struct {
+	value float64
+}
+
+func (v FloatValue) Bool() bool {
+	return v.value != 0
+}
+
+func (v FloatValue) String() string {
+	return strconv.FormatFloat(v.value, 'g', -1, 64)
+}
+
+func (v FloatValue) MarshalYAML() (any, error) {
+	n := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "!!float",
+		Value: v.String(),
+	}
+	return n, nil
+}
+
+func (v *FloatValue) UnmarshalYAML(node *yaml.Node) error {
+	if node.ShortTag() != "!!float" {
+		return fmt.Errorf("cannot unmarshal %s into float", node.ShortTag())
+	}
+	return node.Decode(&v.value)
+}
+
 type StringValue struct {
 	value string
 }
@@ -106,7 +135,7 @@ func (v StringValue) String() string {
 	return v.value
 }
 
-func (v StringValue) MarshalYAML() (interface{}, error) {
+func (v StringValue) MarshalYAML() (any, error) {
 	return v.value, nil
 }
 

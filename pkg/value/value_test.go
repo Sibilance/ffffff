@@ -81,10 +81,33 @@ func TestIntValue(t *testing.T) {
 	assertMarshalYAML(t, &IntValue{*intValue}, `!!int -12345678901234567890`)
 	assertUnmarshalYAML(t, &IntValue{}, `-12345678901234567890`, &IntValue{*intValue}, nil)
 	assertUnmarshalYAML(t, &IntValue{}, `123`, &IntValue{*big.NewInt(123)}, nil)
+	assertUnmarshalYAML(t, &IntValue{}, `0xff`, &IntValue{*big.NewInt(255)}, nil)
+	assertUnmarshalYAML(t, &IntValue{}, `0o77`, &IntValue{*big.NewInt(63)}, nil)
 	assertUnmarshalYAML(t, &IntValue{}, `abc`, nil,
 		errors.New("cannot unmarshal !!str into int"))
 	assertUnmarshalYAML(t, &IntValue{}, `!!int abc`, nil,
 		errors.New("cannot unmarshal value \"abc\" into int"))
+}
+
+func TestFloatValue(t *testing.T) {
+	assertBool(t, &FloatValue{0.0}, false)
+	assertBool(t, &FloatValue{0.1}, true)
+	assertString(t, &FloatValue{3.14159}, "3.14159")
+	assertString(t, &FloatValue{6.022e23}, "6.022e+23")
+	assertString(t, &FloatValue{-1.6e-19}, "-1.6e-19")
+	assertMarshalYAML(t, &FloatValue{0.0}, `!!float 0`)
+	assertMarshalYAML(t, &FloatValue{3.14159}, `3.14159`)
+	assertMarshalYAML(t, &FloatValue{6.022e23}, `6.022e+23`)
+	assertMarshalYAML(t, &FloatValue{-1.6e-19}, `-1.6e-19`)
+	assertUnmarshalYAML(t, &FloatValue{}, `!!float 0`, &FloatValue{0.0}, nil)
+	assertUnmarshalYAML(t, &FloatValue{}, `0.0`, &FloatValue{0.0}, nil)
+	assertUnmarshalYAML(t, &FloatValue{}, `3.14159`, &FloatValue{3.14159}, nil)
+	assertUnmarshalYAML(t, &FloatValue{}, `6.022e23`, &FloatValue{6.022e23}, nil)
+	assertUnmarshalYAML(t, &FloatValue{}, `-1.6e-19`, &FloatValue{-1.6e-19}, nil)
+	assertUnmarshalYAML(t, &FloatValue{}, `0`, nil,
+		errors.New("cannot unmarshal !!int into float"))
+	assertUnmarshalYAML(t, &FloatValue{}, `!!str 3.14159`, nil,
+		errors.New("cannot unmarshal !!str into float"))
 }
 
 func TestStringValue(t *testing.T) {
