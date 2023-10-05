@@ -122,3 +122,22 @@ func TestStringValue(t *testing.T) {
 	assertUnmarshalYAML(t, &StringValue{}, `123`, nil,
 		errors.New("cannot unmarshal !!int into string"))
 }
+
+func TestListValue(t *testing.T) {
+	assertBool(t, &ListValue{[]Value{}}, false)
+	assertBool(t, &ListValue{[]Value{&StringValue{""}}}, true)
+	assertString(t, &ListValue{[]Value{}}, "[]\n")
+	assertString(t, &ListValue{[]Value{&StringValue{""}}}, "- \"\"\n")
+	assertMarshalYAML(t, &ListValue{[]Value{}}, "[]\n")
+	assertMarshalYAML(t, &ListValue{[]Value{&StringValue{""}}}, "- \"\"\n")
+	assertUnmarshalYAML(t, &ListValue{}, `[]`, &ListValue{}, nil)
+	assertUnmarshalYAML(t, &ListValue{}, `[""]`, &ListValue{[]Value{&StringValue{""}}}, nil)
+	assertUnmarshalYAML(t, &ListValue{}, `[1]`, &ListValue{[]Value{&IntValue{*big.NewInt(1)}}}, nil)
+	intValue, _ := (&big.Int{}).SetString("-12345678901234567890", 0)
+	assertUnmarshalYAML(t, &ListValue{}, `[-12345678901234567890]`, &ListValue{[]Value{&IntValue{*intValue}}}, nil)
+	assertUnmarshalYAML(t, &ListValue{}, `[3.14159]`, &ListValue{[]Value{&FloatValue{3.14159}}}, nil)
+	assertUnmarshalYAML(t, &ListValue{}, `[6.022e23]`, &ListValue{[]Value{&FloatValue{6.022e23}}}, nil)
+	assertUnmarshalYAML(t, &ListValue{}, `[-1.6e-19]`, &ListValue{[]Value{&FloatValue{-1.6e-19}}}, nil)
+	assertUnmarshalYAML(t, &ListValue{}, `[[]]`, &ListValue{[]Value{&ListValue{}}}, nil)
+	// TODO: test nested map
+}

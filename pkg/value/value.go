@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/sibilance/ffffff/pkg/yamlhelpers"
 	"gopkg.in/yaml.v3"
 )
 
@@ -144,4 +145,76 @@ func (v *StringValue) UnmarshalYAML(node *yaml.Node) error {
 		return fmt.Errorf("cannot unmarshal %s into string", node.ShortTag())
 	}
 	return node.Decode(&v.value)
+}
+
+type ListValue struct {
+	value []Value
+}
+
+func (v ListValue) Bool() bool {
+	return len(v.value) > 0
+}
+
+func (v ListValue) String() string {
+	s, err := yaml.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return string(s)
+}
+
+func (v ListValue) MarshalYAML() (any, error) {
+	return v.value, nil
+}
+
+func (v *ListValue) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.SequenceNode {
+		return fmt.Errorf("cannot unmarshal %s into list", yamlhelpers.KindString(node.Kind))
+	}
+	if node.ShortTag() != "!!seq" {
+		return fmt.Errorf("cannot unmarshal %s into list", node.ShortTag())
+	}
+	for i, child := range node.Content {
+		value, err := UnmarshalYAML(child)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling item %d: %w", i, err)
+		}
+		v.value = append(v.value, value)
+	}
+	return nil
+}
+
+func UnmarshalYAML(node *yaml.Node) (ret Value, err error) {
+	switch node.Kind {
+	case yaml.ScalarNode:
+		switch node.ShortTag() {
+		case "!!null":
+			ret = NullValue{}
+		case "!!bool":
+			ret = &BoolValue{}
+		case "!!int":
+			ret = &IntValue{}
+		case "!!float":
+			// It's possible this was a misidentified integer due to size.
+			testInt := big.Int{}
+			_, success := testInt.SetString(node.Value, 0)
+			if success {
+				ret = &IntValue{}
+			} else {
+				ret = &FloatValue{}
+			}
+		case "!!str":
+			ret = &StringValue{}
+		default:
+			return nil, fmt.Errorf("cannot unmarshal %s", node.ShortTag())
+		}
+	case yaml.SequenceNode:
+		ret = &ListValue{}
+	case yaml.MappingNode:
+		panic("not implemented yet")
+	default:
+		return nil, fmt.Errorf("cannot unmarshal %s", yamlhelpers.KindString(node.Kind))
+	}
+	err = ret.UnmarshalYAML(node)
+	return
 }
