@@ -79,12 +79,12 @@ func (v BoolValue) Hash(seed maphash.Seed) (uint64, error) {
 }
 
 func (v BoolValue) Cmp(other Value) int {
-	switch other.(type) {
+	switch other := other.(type) {
 	case *BoolValue:
-		if !v.value && other.(*BoolValue).value {
+		if !v.value && other.value {
 			return -1
 		}
-		if v.value && !other.(*BoolValue).value {
+		if v.value && !other.value {
 			return 1
 		}
 		return 0
@@ -120,9 +120,9 @@ func (v *IntValue) Hash(seed maphash.Seed) (uint64, error) {
 }
 
 func (v *IntValue) Cmp(other Value) int {
-	switch other.(type) {
+	switch other := other.(type) {
 	case *IntValue:
-		return v.value.Cmp(&other.(*IntValue).value)
+		return v.value.Cmp(&other.value)
 	}
 	return cmpType(v, other)
 }
@@ -167,12 +167,12 @@ func (v FloatValue) Hash(seed maphash.Seed) (uint64, error) {
 }
 
 func (v FloatValue) Cmp(other Value) int {
-	switch other.(type) {
+	switch other := other.(type) {
 	case *FloatValue:
-		if v.value < other.(*FloatValue).value {
+		if v.value < other.value {
 			return -1
 		}
-		if v.value > other.(*FloatValue).value {
+		if v.value > other.value {
 			return 1
 		}
 		return 0
@@ -213,12 +213,12 @@ func (v StringValue) Hash(seed maphash.Seed) (uint64, error) {
 }
 
 func (v StringValue) Cmp(other Value) int {
-	switch other.(type) {
+	switch other := other.(type) {
 	case *StringValue:
-		if v.value < other.(*StringValue).value {
+		if v.value < other.value {
 			return -1
 		}
-		if v.value > other.(*StringValue).value {
+		if v.value > other.value {
 			return 1
 		}
 		return 0
@@ -258,19 +258,18 @@ func (v ListValue) Hash(seed maphash.Seed) (uint64, error) {
 }
 
 func (v ListValue) Cmp(other Value) int {
-	switch other.(type) {
+	switch other := other.(type) {
 	case *ListValue:
-		otherListValue := other.(*ListValue).value
 		for i, item := range v.value {
-			if i > len(otherListValue) {
+			if i > len(other.value)-1 {
 				return 1
 			}
-			cmp := item.Cmp(otherListValue[i])
+			cmp := item.Cmp(other.value[i])
 			if cmp != 0 {
 				return cmp
 			}
 		}
-		if len(v.value) < len(otherListValue) {
+		if len(v.value) < len(other.value) {
 			return -1
 		}
 		return 0
@@ -331,7 +330,7 @@ func (v MapValue) Cmp(other Value) int {
 		// TODO: implement map equality check
 		return 0
 	}
-	return 0
+	return cmpType(&v, other)
 }
 
 func (v *MapValue) SetItem(key, value Value) error {
