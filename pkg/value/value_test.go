@@ -2,6 +2,7 @@ package value
 
 import (
 	"errors"
+	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -19,6 +20,13 @@ func assertBool(t *testing.T, v Value, b bool) {
 func assertString(t *testing.T, v Value, s string) {
 	if v.String() != s {
 		t.Fatalf("expected %v, got %v", s, v.String())
+	}
+}
+
+func assertCmp(t *testing.T, v Value, other Value, expected int) {
+	actual := v.Cmp(other)
+	if actual != expected {
+		t.Fatalf("expected %v, got %v", expected, actual)
 	}
 }
 
@@ -49,9 +57,29 @@ func assertUnmarshalYAML(t *testing.T, v Value, s string, expected Value, expect
 	}
 }
 
+func assertUnmarshalYAMLRoundTrip(t *testing.T, v Value, s string, expected string, expectedErr error) {
+	err := yaml.Unmarshal([]byte(s), v)
+	if err != nil {
+		if expectedErr != nil && err.Error() != expectedErr.Error() {
+			t.Fatalf("expected error `%v`, got error `%v`", expectedErr, err)
+		} else if expectedErr != nil {
+			return
+		}
+		t.Fatal(err)
+	}
+	assertMarshalYAML(t, v, expected)
+}
+
 func TestNullValue(t *testing.T) {
 	assertBool(t, NullValue{}, false)
 	assertString(t, NullValue{}, "null")
+	assertCmp(t, NullValue{}, NullValue{}, 0)
+	assertCmp(t, NullValue{}, &BoolValue{}, -1)
+	assertCmp(t, NullValue{}, &IntValue{}, -1)
+	assertCmp(t, NullValue{}, &FloatValue{}, -1)
+	assertCmp(t, NullValue{}, &StringValue{}, -1)
+	assertCmp(t, NullValue{}, &ListValue{}, -1)
+	assertCmp(t, NullValue{}, &MapValue{}, -1)
 	assertMarshalYAML(t, NullValue{}, `null`)
 	assertUnmarshalYAML(t, NullValue{}, `null`, NullValue{}, nil)
 	assertUnmarshalYAML(t, &NullValue{}, `0`, nil,
@@ -63,6 +91,16 @@ func TestBoolValue(t *testing.T) {
 	assertBool(t, &BoolValue{true}, true)
 	assertString(t, &BoolValue{false}, "false")
 	assertString(t, &BoolValue{true}, "true")
+	assertCmp(t, &BoolValue{}, NullValue{}, 1)
+	assertCmp(t, &BoolValue{false}, &BoolValue{false}, 0)
+	assertCmp(t, &BoolValue{false}, &BoolValue{true}, -1)
+	assertCmp(t, &BoolValue{true}, &BoolValue{false}, 1)
+	assertCmp(t, &BoolValue{true}, &BoolValue{true}, 0)
+	assertCmp(t, &BoolValue{}, &IntValue{}, -1)
+	assertCmp(t, &BoolValue{}, &FloatValue{}, -1)
+	assertCmp(t, &BoolValue{}, &StringValue{}, -1)
+	assertCmp(t, &BoolValue{}, &ListValue{}, -1)
+	assertCmp(t, &BoolValue{}, &MapValue{}, -1)
 	assertMarshalYAML(t, &BoolValue{false}, `false`)
 	assertMarshalYAML(t, &BoolValue{true}, `true`)
 	assertUnmarshalYAML(t, &BoolValue{}, `false`, &BoolValue{false}, nil)
@@ -77,6 +115,15 @@ func TestIntValue(t *testing.T) {
 	assertString(t, &IntValue{*big.NewInt(123)}, "123")
 	intValue, _ := (&big.Int{}).SetString("-12345678901234567890", 0)
 	assertString(t, &IntValue{*intValue}, "-12345678901234567890")
+	assertCmp(t, &IntValue{}, NullValue{}, 1)
+	assertCmp(t, &IntValue{}, &BoolValue{}, 1)
+	assertCmp(t, &IntValue{*big.NewInt(0)}, &IntValue{*big.NewInt(0)}, 0)
+	assertCmp(t, &IntValue{*big.NewInt(0)}, &IntValue{*big.NewInt(1)}, -1)
+	assertCmp(t, &IntValue{*big.NewInt(1)}, &IntValue{*big.NewInt(0)}, 1)
+	assertCmp(t, &IntValue{}, &FloatValue{}, -1)
+	assertCmp(t, &IntValue{}, &StringValue{}, -1)
+	assertCmp(t, &IntValue{}, &ListValue{}, -1)
+	assertCmp(t, &IntValue{}, &MapValue{}, -1)
 	assertMarshalYAML(t, &IntValue{*big.NewInt(123)}, `123`)
 	assertMarshalYAML(t, &IntValue{*intValue}, `!!int -12345678901234567890`)
 	assertUnmarshalYAML(t, &IntValue{}, `-12345678901234567890`, &IntValue{*intValue}, nil)
@@ -95,6 +142,16 @@ func TestFloatValue(t *testing.T) {
 	assertString(t, &FloatValue{3.14159}, "3.14159")
 	assertString(t, &FloatValue{6.022e23}, "6.022e+23")
 	assertString(t, &FloatValue{-1.6e-19}, "-1.6e-19")
+	assertCmp(t, &FloatValue{}, NullValue{}, 1)
+	assertCmp(t, &FloatValue{}, &BoolValue{}, 1)
+	assertCmp(t, &FloatValue{}, &IntValue{*big.NewInt(0)}, 1)
+	assertCmp(t, &FloatValue{0.0}, &FloatValue{0.1}, -1)
+	assertCmp(t, &FloatValue{0.1}, &FloatValue{0.0}, 1)
+	assertCmp(t, &FloatValue{0.0}, &FloatValue{0.0}, 0)
+	assertCmp(t, &FloatValue{math.NaN()}, &FloatValue{math.NaN()}, 0)
+	assertCmp(t, &FloatValue{}, &StringValue{}, -1)
+	assertCmp(t, &FloatValue{}, &ListValue{}, -1)
+	assertCmp(t, &FloatValue{}, &MapValue{}, -1)
 	assertMarshalYAML(t, &FloatValue{0.0}, `!!float 0`)
 	assertMarshalYAML(t, &FloatValue{3.14159}, `3.14159`)
 	assertMarshalYAML(t, &FloatValue{6.022e23}, `6.022e+23`)
@@ -115,6 +172,16 @@ func TestStringValue(t *testing.T) {
 	assertBool(t, &StringValue{"hello world"}, true)
 	assertString(t, &StringValue{""}, "")
 	assertString(t, &StringValue{"hello world"}, "hello world")
+	assertCmp(t, &StringValue{}, NullValue{}, 1)
+	assertCmp(t, &StringValue{}, &BoolValue{}, 1)
+	assertCmp(t, &StringValue{}, &IntValue{*big.NewInt(0)}, 1)
+	assertCmp(t, &StringValue{}, &FloatValue{}, 1)
+	assertCmp(t, &StringValue{""}, &StringValue{""}, 0)
+	assertCmp(t, &StringValue{"AAA"}, &StringValue{"AAA"}, 0)
+	assertCmp(t, &StringValue{"AAA"}, &StringValue{"BBB"}, -1)
+	assertCmp(t, &StringValue{"BBB"}, &StringValue{"AAA"}, 1)
+	assertCmp(t, &StringValue{}, &ListValue{}, -1)
+	assertCmp(t, &StringValue{}, &MapValue{}, -1)
 	assertMarshalYAML(t, &StringValue{""}, `""`)
 	assertMarshalYAML(t, &StringValue{"hello world"}, `hello world`)
 	assertUnmarshalYAML(t, &StringValue{}, `hello world`, &StringValue{"hello world"}, nil)
@@ -128,6 +195,20 @@ func TestListValue(t *testing.T) {
 	assertBool(t, &ListValue{[]Value{&StringValue{""}}}, true)
 	assertString(t, &ListValue{[]Value{}}, "[]\n")
 	assertString(t, &ListValue{[]Value{&StringValue{""}}}, "- \"\"\n")
+	assertCmp(t, &ListValue{}, NullValue{}, 1)
+	assertCmp(t, &ListValue{}, &BoolValue{}, 1)
+	assertCmp(t, &ListValue{}, &IntValue{*big.NewInt(0)}, 1)
+	assertCmp(t, &ListValue{}, &FloatValue{}, 1)
+	assertCmp(t, &ListValue{}, &StringValue{}, 1)
+	assertCmp(t, &ListValue{}, &ListValue{[]Value{}}, 0)
+	assertCmp(t, &ListValue{[]Value{}}, &ListValue{[]Value{}}, 0)
+	assertCmp(t, &ListValue{[]Value{&StringValue{""}}}, &ListValue{[]Value{}}, 1)
+	assertCmp(t, &ListValue{[]Value{}}, &ListValue{[]Value{&StringValue{""}}}, -1)
+	assertCmp(t, &ListValue{[]Value{&StringValue{""}}}, &ListValue{[]Value{&StringValue{""}}}, 0)
+	assertCmp(t, &ListValue{[]Value{&StringValue{"AAA"}}}, &ListValue{[]Value{&StringValue{"AAA"}}}, 0)
+	assertCmp(t, &ListValue{[]Value{&StringValue{"AAA"}}}, &ListValue{[]Value{&StringValue{"BBB"}}}, -1)
+	assertCmp(t, &ListValue{[]Value{&StringValue{"BBB"}}}, &ListValue{[]Value{&StringValue{"AAA"}}}, 1)
+	assertCmp(t, &ListValue{}, &MapValue{}, -1)
 	assertMarshalYAML(t, &ListValue{[]Value{}}, "[]\n")
 	assertMarshalYAML(t, &ListValue{[]Value{&StringValue{""}}}, "- \"\"\n")
 	assertUnmarshalYAML(t, &ListValue{}, `[]`, &ListValue{}, nil)
@@ -140,4 +221,18 @@ func TestListValue(t *testing.T) {
 	assertUnmarshalYAML(t, &ListValue{}, `[-1.6e-19]`, &ListValue{[]Value{&FloatValue{-1.6e-19}}}, nil)
 	assertUnmarshalYAML(t, &ListValue{}, `[[]]`, &ListValue{[]Value{&ListValue{}}}, nil)
 	// TODO: test nested map
+}
+
+func TestMapValue(t *testing.T) {
+	assertBool(t, &MapValue{}, false)
+	mapValue := &MapValue{}
+	mapValue.SetItem(&StringValue{"foo"}, &StringValue{"bar"})
+	assertBool(t, mapValue, true)
+	assertString(t, &MapValue{}, "{}\n")
+	assertString(t, mapValue, "foo: bar\n")
+	// TODO: test cmp
+	assertMarshalYAML(t, &MapValue{}, "{}\n")
+	assertMarshalYAML(t, mapValue, "foo: bar\n")
+	assertUnmarshalYAMLRoundTrip(t, &MapValue{}, "{foo: bar}", "foo: bar", nil)
+	assertUnmarshalYAMLRoundTrip(t, &MapValue{}, "{foo: bar, 0: 1}", "foo: bar\n0: 1", nil)
 }
