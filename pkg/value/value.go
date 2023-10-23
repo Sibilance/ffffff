@@ -1,7 +1,10 @@
 package value
 
 import (
+	"encoding/binary"
 	"fmt"
+	"hash/maphash"
+	"math"
 	"math/big"
 	"strconv"
 
@@ -12,6 +15,8 @@ import (
 type Value interface {
 	Bool() bool
 	String() string
+	Hash(maphash.Seed) (uint64, error)
+	Equals(Value) bool
 	MarshalYAML() (any, error)
 	UnmarshalYAML(*yaml.Node) error
 }
@@ -24,6 +29,18 @@ func (v NullValue) Bool() bool {
 
 func (v NullValue) String() string {
 	return "null"
+}
+
+func (v NullValue) Hash(seed maphash.Seed) (uint64, error) {
+	return maphash.String(seed, ""), nil
+}
+
+func (v NullValue) Equals(other Value) bool {
+	switch other.(type) {
+	case NullValue:
+		return true
+	}
+	return false
 }
 
 func (v NullValue) MarshalYAML() (any, error) {
@@ -52,6 +69,22 @@ func (v BoolValue) String() string {
 	return "false"
 }
 
+func (v BoolValue) Hash(seed maphash.Seed) (uint64, error) {
+	if v.value {
+		return maphash.String(seed, "T"), nil
+	} else {
+		return maphash.String(seed, "F"), nil
+	}
+}
+
+func (v BoolValue) Equals(other Value) bool {
+	switch other.(type) {
+	case *BoolValue:
+		return v.value == other.(*BoolValue).value
+	}
+	return false
+}
+
 func (v BoolValue) MarshalYAML() (any, error) {
 	return v.value, nil
 }
@@ -73,6 +106,18 @@ func (v *IntValue) Bool() bool {
 
 func (v *IntValue) String() string {
 	return v.value.String()
+}
+
+func (v *IntValue) Hash(seed maphash.Seed) (uint64, error) {
+	return maphash.Bytes(seed, v.value.Bytes()), nil
+}
+
+func (v *IntValue) Equals(other Value) bool {
+	switch other.(type) {
+	case *IntValue:
+		return v.value.Cmp(&other.(*IntValue).value) == 0
+	}
+	return false
 }
 
 func (v *IntValue) MarshalYAML() (any, error) {
@@ -108,6 +153,20 @@ func (v FloatValue) String() string {
 	return strconv.FormatFloat(v.value, 'g', -1, 64)
 }
 
+func (v FloatValue) Hash(seed maphash.Seed) (uint64, error) {
+	var buf [8]byte
+	binary.BigEndian.PutUint64(buf[:], math.Float64bits(v.value))
+	return maphash.Bytes(seed, buf[:]), nil
+}
+
+func (v FloatValue) Equals(other Value) bool {
+	switch other.(type) {
+	case *FloatValue:
+		return v.value == other.(*FloatValue).value
+	}
+	return false
+}
+
 func (v FloatValue) MarshalYAML() (any, error) {
 	n := &yaml.Node{
 		Kind:  yaml.ScalarNode,
@@ -134,6 +193,18 @@ func (v StringValue) Bool() bool {
 
 func (v StringValue) String() string {
 	return v.value
+}
+
+func (v StringValue) Hash(seed maphash.Seed) (uint64, error) {
+	return maphash.String(seed, v.value), nil
+}
+
+func (v StringValue) Equals(other Value) bool {
+	switch other.(type) {
+	case *StringValue:
+		return v.value == other.(*StringValue).value
+	}
+	return false
 }
 
 func (v StringValue) MarshalYAML() (any, error) {
@@ -163,6 +234,28 @@ func (v ListValue) String() string {
 	return string(s)
 }
 
+func (v ListValue) Hash(seed maphash.Seed) (uint64, error) {
+	return 0, fmt.Errorf("list is mutable")
+}
+
+func (v ListValue) Equals(other Value) bool {
+	switch other.(type) {
+	case *ListValue:
+		otherListValue := other.(*ListValue).value
+		if len(v.value) != len(otherListValue) {
+			return false
+		}
+		for i, item := range v.value {
+			otherItem := otherListValue[i]
+			if !item.Equals(otherItem) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 func (v ListValue) MarshalYAML() (any, error) {
 	return v.value, nil
 }
@@ -180,6 +273,107 @@ func (v *ListValue) UnmarshalYAML(node *yaml.Node) error {
 			return fmt.Errorf("error unmarshalling item %d: %w", i, err)
 		}
 		v.value = append(v.value, value)
+	}
+	return nil
+}
+
+type mapPair struct {
+	key   Value
+	value Value
+}
+
+type MapValue struct {
+	seed  maphash.Seed
+	value map[uint64][]mapPair
+}
+
+func (v MapValue) Bool() bool {
+	return len(v.value) > 0
+}
+
+func (v MapValue) String() string {
+	s, err := yaml.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return string(s)
+}
+
+func (v MapValue) Hash(seed maphash.Seed) (uint64, error) {
+	return 0, fmt.Errorf("map is mutable")
+}
+
+func (v MapValue) Equals(other Value) bool {
+	switch other.(type) {
+	case *MapValue:
+		// TODO: implement map equality check
+		return false
+	}
+	return false
+}
+
+func (v *MapValue) SetItem(key, value Value) error {
+	if v.value == nil {
+		v.seed = maphash.MakeSeed()
+		v.value = make(map[uint64][]mapPair)
+	}
+	keyHash, err := key.Hash(v.seed)
+	if err != nil {
+		return err
+	}
+	for _, existingPair := range v.value[keyHash] {
+		if existingPair.key.Equals(key) {
+			existingPair.value = value
+			return nil
+		}
+	}
+	v.value[keyHash] = append(v.value[keyHash], mapPair{key, value})
+	return nil
+}
+
+func (v MapValue) MarshalYAML() (any, error) {
+	mapNode := &yaml.Node{Kind: yaml.MappingNode}
+	for _, pairs := range v.value {
+		for _, pair := range pairs {
+			var key, value yaml.Node
+			err := key.Encode(pair.key)
+			if err != nil {
+				return nil, fmt.Errorf("error marshalling key: %w", err)
+			}
+			err = value.Encode(pair.value)
+			if err != nil {
+				return nil, fmt.Errorf("error marshalling value: %w", err)
+			}
+			mapNode.Content = append(mapNode.Content, &key, &value)
+		}
+	}
+	return v.value, nil
+}
+
+func (v *MapValue) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return fmt.Errorf("cannot unmarshal %s into map", yamlhelpers.KindString(node.Kind))
+	}
+	if node.ShortTag() != "!!map" {
+		return fmt.Errorf("cannot unmarshal %s into map", node.ShortTag())
+	}
+	for i, value := range node.Content {
+		if i&1 == 0 {
+			continue // skip keys
+		}
+		key := node.Content[i-1]
+		keyValue, err := UnmarshalYAML(key)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling key: %w", err)
+		}
+		valueValue, err := UnmarshalYAML(value)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling value: %w", err)
+		}
+		err = v.SetItem(keyValue, valueValue)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
