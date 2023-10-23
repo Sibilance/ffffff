@@ -6,6 +6,7 @@ import (
 	"hash/maphash"
 	"math"
 	"math/big"
+	"reflect"
 	"strconv"
 
 	"github.com/sibilance/ffffff/pkg/yamlhelpers"
@@ -16,7 +17,7 @@ type Value interface {
 	Bool() bool
 	String() string
 	Hash(maphash.Seed) (uint64, error)
-	Equals(Value) bool
+	Cmp(Value) int
 	MarshalYAML() (any, error)
 	UnmarshalYAML(*yaml.Node) error
 }
@@ -35,12 +36,12 @@ func (v NullValue) Hash(seed maphash.Seed) (uint64, error) {
 	return maphash.String(seed, ""), nil
 }
 
-func (v NullValue) Equals(other Value) bool {
+func (v NullValue) Cmp(other Value) int {
 	switch other.(type) {
 	case NullValue:
-		return true
+		return 0
 	}
-	return false
+	return cmpType(v, other)
 }
 
 func (v NullValue) MarshalYAML() (any, error) {
@@ -77,12 +78,18 @@ func (v BoolValue) Hash(seed maphash.Seed) (uint64, error) {
 	}
 }
 
-func (v BoolValue) Equals(other Value) bool {
+func (v BoolValue) Cmp(other Value) int {
 	switch other.(type) {
 	case *BoolValue:
-		return v.value == other.(*BoolValue).value
+		if !v.value && other.(*BoolValue).value {
+			return -1
+		}
+		if v.value && !other.(*BoolValue).value {
+			return 1
+		}
+		return 0
 	}
-	return false
+	return cmpType(&v, other)
 }
 
 func (v BoolValue) MarshalYAML() (any, error) {
@@ -112,12 +119,12 @@ func (v *IntValue) Hash(seed maphash.Seed) (uint64, error) {
 	return maphash.Bytes(seed, v.value.Bytes()), nil
 }
 
-func (v *IntValue) Equals(other Value) bool {
+func (v *IntValue) Cmp(other Value) int {
 	switch other.(type) {
 	case *IntValue:
-		return v.value.Cmp(&other.(*IntValue).value) == 0
+		return v.value.Cmp(&other.(*IntValue).value)
 	}
-	return false
+	return cmpType(v, other)
 }
 
 func (v *IntValue) MarshalYAML() (any, error) {
@@ -159,12 +166,18 @@ func (v FloatValue) Hash(seed maphash.Seed) (uint64, error) {
 	return maphash.Bytes(seed, buf[:]), nil
 }
 
-func (v FloatValue) Equals(other Value) bool {
+func (v FloatValue) Cmp(other Value) int {
 	switch other.(type) {
 	case *FloatValue:
-		return v.value == other.(*FloatValue).value
+		if v.value < other.(*FloatValue).value {
+			return -1
+		}
+		if v.value > other.(*FloatValue).value {
+			return 1
+		}
+		return 0
 	}
-	return false
+	return cmpType(&v, other)
 }
 
 func (v FloatValue) MarshalYAML() (any, error) {
@@ -199,12 +212,18 @@ func (v StringValue) Hash(seed maphash.Seed) (uint64, error) {
 	return maphash.String(seed, v.value), nil
 }
 
-func (v StringValue) Equals(other Value) bool {
+func (v StringValue) Cmp(other Value) int {
 	switch other.(type) {
 	case *StringValue:
-		return v.value == other.(*StringValue).value
+		if v.value < other.(*StringValue).value {
+			return -1
+		}
+		if v.value > other.(*StringValue).value {
+			return 1
+		}
+		return 0
 	}
-	return false
+	return cmpType(&v, other)
 }
 
 func (v StringValue) MarshalYAML() (any, error) {
@@ -238,22 +257,25 @@ func (v ListValue) Hash(seed maphash.Seed) (uint64, error) {
 	return 0, fmt.Errorf("list is mutable")
 }
 
-func (v ListValue) Equals(other Value) bool {
+func (v ListValue) Cmp(other Value) int {
 	switch other.(type) {
 	case *ListValue:
 		otherListValue := other.(*ListValue).value
-		if len(v.value) != len(otherListValue) {
-			return false
-		}
 		for i, item := range v.value {
-			otherItem := otherListValue[i]
-			if !item.Equals(otherItem) {
-				return false
+			if i > len(otherListValue) {
+				return 1
+			}
+			cmp := item.Cmp(otherListValue[i])
+			if cmp != 0 {
+				return cmp
 			}
 		}
-		return true
+		if len(v.value) < len(otherListValue) {
+			return -1
+		}
+		return 0
 	}
-	return false
+	return cmpType(&v, other)
 }
 
 func (v ListValue) MarshalYAML() (any, error) {
@@ -303,13 +325,13 @@ func (v MapValue) Hash(seed maphash.Seed) (uint64, error) {
 	return 0, fmt.Errorf("map is mutable")
 }
 
-func (v MapValue) Equals(other Value) bool {
+func (v MapValue) Cmp(other Value) int {
 	switch other.(type) {
 	case *MapValue:
 		// TODO: implement map equality check
-		return false
+		return 0
 	}
-	return false
+	return 0
 }
 
 func (v *MapValue) SetItem(key, value Value) error {
@@ -322,7 +344,7 @@ func (v *MapValue) SetItem(key, value Value) error {
 		return err
 	}
 	for _, existingPair := range v.value[keyHash] {
-		if existingPair.key.Equals(key) {
+		if existingPair.key.Cmp(key) == 0 {
 			existingPair.value = value
 			return nil
 		}
@@ -411,4 +433,37 @@ func UnmarshalYAML(node *yaml.Node) (ret Value, err error) {
 	}
 	err = ret.UnmarshalYAML(node)
 	return
+}
+
+func cmpType(v, other Value) int {
+	vType := cmpTypeOrdering(v)
+	otherType := cmpTypeOrdering(other)
+	if vType < otherType {
+		return -1
+	}
+	if vType > otherType {
+		return 1
+	}
+	return 0
+}
+
+// cmpTypeOrdering determines type ordering for sorting different types
+func cmpTypeOrdering(v Value) string {
+	switch v.(type) {
+	case NullValue:
+		return "000"
+	case *BoolValue:
+		return "001"
+	case *IntValue:
+		return "002"
+	case *FloatValue:
+		return "003"
+	case *StringValue:
+		return "004"
+	case *ListValue:
+		return "005"
+	case *MapValue:
+		return "006"
+	}
+	return reflect.TypeOf(v).Name()
 }
