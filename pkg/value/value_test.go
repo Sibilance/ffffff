@@ -57,6 +57,19 @@ func assertUnmarshalYAML(t *testing.T, v Value, s string, expected Value, expect
 	}
 }
 
+func assertUnmarshalYAMLRoundTrip(t *testing.T, v Value, s string, expected string, expectedErr error) {
+	err := yaml.Unmarshal([]byte(s), v)
+	if err != nil {
+		if expectedErr != nil && err.Error() != expectedErr.Error() {
+			t.Fatalf("expected error `%v`, got error `%v`", expectedErr, err)
+		} else if expectedErr != nil {
+			return
+		}
+		t.Fatal(err)
+	}
+	assertMarshalYAML(t, v, expected)
+}
+
 func TestNullValue(t *testing.T) {
 	assertBool(t, NullValue{}, false)
 	assertString(t, NullValue{}, "null")
@@ -208,4 +221,18 @@ func TestListValue(t *testing.T) {
 	assertUnmarshalYAML(t, &ListValue{}, `[-1.6e-19]`, &ListValue{[]Value{&FloatValue{-1.6e-19}}}, nil)
 	assertUnmarshalYAML(t, &ListValue{}, `[[]]`, &ListValue{[]Value{&ListValue{}}}, nil)
 	// TODO: test nested map
+}
+
+func TestMapValue(t *testing.T) {
+	assertBool(t, &MapValue{}, false)
+	mapValue := &MapValue{}
+	mapValue.SetItem(&StringValue{"foo"}, &StringValue{"bar"})
+	assertBool(t, mapValue, true)
+	assertString(t, &MapValue{}, "{}\n")
+	assertString(t, mapValue, "foo: bar\n")
+	// TODO: test cmp
+	assertMarshalYAML(t, &MapValue{}, "{}\n")
+	assertMarshalYAML(t, mapValue, "foo: bar\n")
+	assertUnmarshalYAMLRoundTrip(t, &MapValue{}, "{foo: bar}", "foo: bar", nil)
+	assertUnmarshalYAMLRoundTrip(t, &MapValue{}, "{foo: bar, 0: 1}", "foo: bar\n0: 1", nil)
 }

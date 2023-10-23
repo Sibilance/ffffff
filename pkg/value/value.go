@@ -368,7 +368,7 @@ func (v MapValue) MarshalYAML() (any, error) {
 			mapNode.Content = append(mapNode.Content, &key, &value)
 		}
 	}
-	return v.value, nil
+	return mapNode, nil
 }
 
 func (v *MapValue) UnmarshalYAML(node *yaml.Node) error {
