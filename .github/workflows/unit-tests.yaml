@@ -9,7 +9,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Make dependencies
-        run: make lua/install libyaml/install
+        run: make -j lua/install libyaml/install
 
       # - name: Run tests
       #   run: go test -v ./...
