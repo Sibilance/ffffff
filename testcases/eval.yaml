@@ -1,0 +1,43 @@
+---
+!eval "hello" .. " " .. "world"
+---
+"hello world"
+
+---
+!eval 3 + 4
+---
+7
+
+---
+!eval 3.0 + 4.0
+---
+7.0
+
+---
+!eval "7"
+---
+"7"
+
+---
+!testcases 
+- param: 1
+- param: 1.0
+- param: "foo"
+---
+!eval param
+---
+1
+---
+1.0
+---
+"foo"
+
+---
+!testcases 
+- param: [1, 2, 3]
+---
+!eval param
+---
+- 1
+- 2
+- 3
