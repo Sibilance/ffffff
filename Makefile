@@ -1,13 +1,16 @@
 CC = gcc
 CFLAGS = -Wall -Werror
 ALL_CFLAGS = $(CFLAGS) -Ilibyaml/install/include -Ilua/install/include
-LDFLAGS = -Llibyaml/install/lib -Llua/install/lib
-LDLIBS = -llua -lyaml
+YL_LDFLAGS = -Llibyaml/install/lib -Llua/install/lib
+YL_LDLIBS = -llua -lyaml
+
+.PHONY: all
+all: main.out
 
 main.out: main.o 
-	$(CC) $(ALL_CFLAGS) main.o $(LDFLAGS) $(LDLIBS) -o main.out
+	$(CC) $(ALL_CFLAGS) main.o $(YL_LDFLAGS) $(YL_LDLIBS) -o main.out
 
-main.o: main.c
+main.o: main.c lua/install libyaml/install
 	$(CC) $(ALL_CFLAGS) -c main.c
 
 lua:
@@ -17,11 +20,6 @@ lua:
 lua/install: lua
 	cd lua && make all local
 
-lua/install/include/lua.h: lua/install
-lua/install/include/lauxlib.h: lua/install
-lua/install/include/lualib.h: lua/install
-lua/install/lib/liblua.a: lua/install
-
 libyaml:
 	mkdir -p libyaml
 	curl https://pyyaml.org/download/libyaml/yaml-0.2.5.tar.gz | tar xvzC libyaml --strip-components=1
@@ -30,9 +28,6 @@ libyaml/install: libyaml
 	cd libyaml && ./configure --prefix="${CURDIR}/libyaml/install"
 	cd libyaml && make all install
 
-libyaml/install/include/yaml.h: libyaml/install
-libyaml/install/lib/libyaml.a: libyaml/install
-
 .PHONY: clean
 clean:
-	rm -rf lua libyaml
+	rm -rf lua libyaml *.o *.out
