@@ -14,6 +14,29 @@ const char *yaml_error_names[] = {
     "EMITTER_ERROR",
 };
 
+const char *yaml_event_names[] = {
+    "NO_EVENT",
+    "STREAM_START_EVENT",
+    "STREAM_END_EVENT",
+    "DOCUMENT_START_EVENT",
+    "DOCUMENT_END_EVENT",
+    "ALIAS_EVENT",
+    "SCALAR_EVENT",
+    "SEQUENCE_START_EVENT",
+    "SEQUENCE_END_EVENT",
+    "MAPPING_START_EVENT",
+    "MAPPING_END_EVENT",
+};
+
+const char *yaml_scalar_style_names[] = {
+    "ANY_SCALAR_STYLE",
+    "PLAIN_SCALAR_STYLE",
+    "SINGLE_QUOTED_SCALAR_STYLE",
+    "DOUBLE_QUOTED_SCALAR_STYLE",
+    "LITERAL_SCALAR_STYLE",
+    "FOLDED_SCALAR_STYLE",
+};
+
 const char *argp_program_version = "yl 0.0.0";
 const char *argp_program_bug_address = "<taliastocks@gmail.com>";
 static char doc[] = "Render a YL template.";
@@ -74,19 +97,24 @@ int main(int argc, char *argv[])
         yaml_event_t event;
         if (!yaml_parser_parse(&parser, &event))
         {
-            printf("%zu:%zu: %s: %s",
-                   parser.problem_mark.line,
-                   parser.problem_mark.column,
+            printf("%zu:%zu: %s: %s\n",
+                   parser.problem_mark.line + 1,
+                   parser.problem_mark.column + 1,
                    yaml_error_names[parser.error],
                    parser.problem);
             break;
         }
 
-        /*
-          ...
-          Process the event.
-          ...
-        */
+        printf("%zu:%zu: %s\n", event.start_mark.line + 1, event.start_mark.column + 1, yaml_event_names[event.type]);
+        switch (event.type)
+        {
+        case YAML_SCALAR_EVENT:
+
+            printf("  TAG: %s, style: %s, VALUE: %s\n", event.data.scalar.tag, yaml_scalar_style_names[event.data.scalar.style], event.data.scalar.value);
+            break;
+        default:
+            break;
+        }
 
         done = (event.type == YAML_STREAM_END_EVENT);
 
