@@ -1,3 +1,15 @@
+CC = gcc
+CFLAGS = -Wall -Werror
+ALL_CFLAGS = $(CFLAGS) -Ilibyaml/install/include -Ilua/install/include
+LDFLAGS = -Llibyaml/install/lib -Llua/install/lib
+LDLIBS = -llua -lyaml
+
+main.out: main.o 
+	$(CC) $(ALL_CFLAGS) main.o $(LDFLAGS) $(LDLIBS) -o main.out
+
+main.o: main.c
+	$(CC) $(ALL_CFLAGS) -c main.c
+
 lua:
 	mkdir -p lua
 	curl https://www.lua.org/ftp/lua-5.4.6.tar.gz | tar xvzC lua --strip-components=1
