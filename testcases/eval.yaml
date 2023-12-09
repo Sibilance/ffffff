@@ -1,20 +1,20 @@
 ---
-!eval "hello" .. " " .. "world"
+! "hello" .. " " .. "world"
 ---
 "hello world"
 
 ---
-!eval 3 + 4
+! 3 + 4
 ---
 7
 
 ---
-!eval 3.0 + 4.0
+! 3.0 + 4.0
 ---
 7.0
 
 ---
-!eval "7"
+! "7"
 ---
 "7"
 
@@ -24,7 +24,7 @@
 - param: 1.0
 - param: "foo"
 ---
-!eval param
+! param
 ---
 1
 ---
@@ -36,7 +36,7 @@
 !testcases 
 - param: [1, 2, 3]
 ---
-!eval param
+! param
 ---
 - 1
 - 2
