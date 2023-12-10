@@ -54,23 +54,47 @@ int init_parser_from_reader(parser_t *parser, read_handler_t *reader, void *data
 
 int parser_parse(parser_t *parser, event_t *event)
 {
-    if (!yaml_parser_parse(parser, &event->_event)) {
-        event->type = YAML_NO_EVENT;
+    event->type = YAML_NO_EVENT;
+    event->error = YAML_NO_ERROR;
+    event->error_message = 0;
+    event->error_context = 0;
+    event->tag = 0;
+    event->value = 0;
+    event->quoted = false;
+
+    yaml_event_t *_event = &event->_event;
+
+    if (!yaml_parser_parse(parser, _event)) {
         event->line = parser->problem_mark.line + 1;
         event->column = parser->problem_mark.column + 1;
         event->error = parser->error;
         event->error_message = parser->problem;
         event->error_context = parser->context;
+        event->tag = 0;
         return 0;
     }
 
-    yaml_event_t *_event = &event->_event;
     event->type = _event->type;
     event->line = _event->start_mark.line + 1;
     event->column = _event->start_mark.column + 1;
-    event->error = YAML_NO_ERROR;
-    event->error_message = 0;
-    event->error_context = 0;
+
+    switch (_event->type) {
+    case YAML_SCALAR_EVENT:
+        event->tag = (const char *)_event->data.scalar.tag;
+        event->value = (const char *)_event->data.scalar.value;
+        yaml_scalar_style_t style = _event->data.scalar.style;
+        event->quoted = style == YAML_DOUBLE_QUOTED_SCALAR_STYLE || style == YAML_SINGLE_QUOTED_SCALAR_STYLE;
+        break;
+    case YAML_SEQUENCE_START_EVENT:
+        event->tag = (const char *)_event->data.sequence_start.tag;
+        break;
+    case YAML_MAPPING_START_EVENT:
+        event->tag = (const char *)_event->data.mapping_start.tag;
+        break;
+    default:
+        break;
+    }
+
     return 1;
 }
 

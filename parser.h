@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "yaml.h"
@@ -15,6 +16,10 @@ typedef struct _event_s {
     error_type_t error;
     const char *error_context;
     const char *error_message;
+
+    const char *tag;
+    const char *value;
+    bool quoted;
 
     yaml_event_t _event;
 } event_t;

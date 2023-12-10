@@ -31,15 +31,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
-const char *yaml_scalar_style_names[] = {
-    "ANY_SCALAR_STYLE",
-    "PLAIN_SCALAR_STYLE",
-    "SINGLE_QUOTED_SCALAR_STYLE",
-    "DOUBLE_QUOTED_SCALAR_STYLE",
-    "LITERAL_SCALAR_STYLE",
-    "FOLDED_SCALAR_STYLE",
-};
-
 int main(int argc, char *argv[])
 {
     struct arguments arguments;
@@ -82,12 +73,12 @@ int main(int argc, char *argv[])
         }
 
         printf("%zu:%zu: %s\n", event.line, event.column, event_name(event.type));
+        printf("  TAG: %s\n", event.tag);
         switch (event.type) {
         case YAML_SCALAR_EVENT:
-            printf("  TAG: %s, style: %s, VALUE: %s\n",
-                   event._event.data.scalar.tag,
-                   yaml_scalar_style_names[event._event.data.scalar.style],
-                   event._event.data.scalar.value);
+            printf("  QUOTED: %d\n  VALUE: %s\n",
+                   event.quoted,
+                   event.value);
             break;
         default:
             break;
