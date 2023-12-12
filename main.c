@@ -61,13 +61,14 @@ int main(int argc, char *argv[])
     yl_event_t event;
     int done = 0;
     while (!done) {
-        if (!yl_parser_parse(&parser, &event)) {
+        yl_error_t err = yl_parser_parse(&parser, &event);
+        if (err.type) {
             printf("%zu:%zu: %s: %s: %s\n",
-                   event.line,
-                   event.column,
-                   yl_error_name(event.error),
-                   event.error_context,
-                   event.error_message);
+                   err.line,
+                   err.column,
+                   yl_error_name(err.type),
+                   err.error_context,
+                   err.error_message);
             break;
         }
 

@@ -15,10 +15,6 @@ typedef struct _yl_event_s {
 
     size_t line, column;
 
-    yl_error_type_t error;
-    const char *error_context;
-    const char *error_message;
-
     const char *tag;
     const char *value;
     bool quoted;
@@ -31,7 +27,7 @@ int yl_init_parser_from_string(yl_parser_t *parser, const unsigned char *input, 
 int yl_init_parser_from_file(yl_parser_t *parser, FILE *file);
 int yl_init_parser_from_reader(yl_parser_t *parser, yl_read_handler_t *reader, void *data);
 
-int yl_parser_parse(yl_parser_t *parser, yl_event_t *event);
+yl_error_t yl_parser_parse(yl_parser_t *parser, yl_event_t *event);
 
 void yl_parser_delete(yl_parser_t *parser);
 void yl_event_delete(yl_event_t *event);

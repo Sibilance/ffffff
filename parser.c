@@ -41,26 +41,20 @@ int yl_init_parser_from_reader(yl_parser_t *parser, yl_read_handler_t *reader, v
     return 1;
 }
 
-int yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
+yl_error_t yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
 {
-    event->type = YAML_NO_EVENT;
-    event->error = YL_NO_ERROR;
-    event->error_message = 0;
-    event->error_context = 0;
-    event->tag = 0;
-    event->value = 0;
-    event->quoted = false;
+    *event = (yl_event_t){0};
 
     yaml_event_t *_event = &event->_event;
 
     if (!yaml_parser_parse(parser, _event)) {
-        event->line = parser->problem_mark.line + 1;
-        event->column = parser->problem_mark.column + 1;
-        event->error = (yl_error_type_t)parser->error;
-        event->error_message = parser->problem;
-        event->error_context = parser->context;
-        event->tag = 0;
-        return 0;
+        return (yl_error_t){
+            (yl_error_type_t)parser->error,
+            parser->problem_mark.line + 1,
+            parser->problem_mark.column + 1,
+            parser->context,
+            parser->problem,
+        };
     }
 
     event->type = _event->type;
@@ -84,7 +78,7 @@ int yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
         break;
     }
 
-    return 1;
+    return (yl_error_t){0};
 }
 
 void yl_parser_delete(yl_parser_t *parser)
@@ -94,7 +88,10 @@ void yl_parser_delete(yl_parser_t *parser)
 
 void yl_event_delete(yl_event_t *event)
 {
-    yaml_event_delete(&event->_event);
+    if (event->type) {
+        yaml_event_delete(&event->_event);
+        *event = (yl_event_t){0};
+    }
 }
 
 const char *yl_event_name(yl_event_type_t event_type)
