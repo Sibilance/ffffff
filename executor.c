@@ -19,6 +19,9 @@ yl_error_t yl_execute_stream(yaml_parser_t *parser, yaml_emitter_t *emitter)
             // already would have consumed this before calling yl_execute_stream().
             break;
         case YAML_DOCUMENT_START_EVENT:
+            err = yl_execute_document(parser, emitter);
+            if (err.type)
+                return err;
             break;
         case YAML_STREAM_END_EVENT:
             done = true;
@@ -28,5 +31,10 @@ yl_error_t yl_execute_stream(yaml_parser_t *parser, yaml_emitter_t *emitter)
         yl_event_delete(&event);
     }
 
+    return YL_SUCCESS;
+}
+
+yl_error_t yl_execute_document(yaml_parser_t *parser, yaml_emitter_t *emitter)
+{
     return YL_SUCCESS;
 }
