@@ -1,6 +1,6 @@
 #include "parser.h"
 
-const char *yaml_event_names[] = {
+const char *yl_event_names[] = {
     "NO_EVENT",
     "STREAM_START_EVENT",
     "STREAM_END_EVENT",
@@ -14,34 +14,7 @@ const char *yaml_event_names[] = {
     "MAPPING_END_EVENT",
 };
 
-int yl_init_parser_from_string(yl_parser_t *parser, const unsigned char *input, size_t size)
-{
-    if (!yaml_parser_initialize(parser)) {
-        return 0;
-    }
-    yaml_parser_set_input_string(parser, input, size);
-    return 1;
-}
-
-int yl_init_parser_from_file(yl_parser_t *parser, FILE *file)
-{
-    if (!yaml_parser_initialize(parser)) {
-        return 0;
-    }
-    yaml_parser_set_input_file(parser, file);
-    return 1;
-}
-
-int yl_init_parser_from_reader(yl_parser_t *parser, yl_read_handler_t *reader, void *data)
-{
-    if (!yaml_parser_initialize(parser)) {
-        return 0;
-    }
-    yaml_parser_set_input(parser, reader, data);
-    return 1;
-}
-
-yl_error_t yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
+yl_error_t yl_parser_parse(yaml_parser_t *parser, yl_event_t *event)
 {
     *event = (yl_event_t){0};
 
@@ -81,11 +54,6 @@ yl_error_t yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
     return YL_SUCCESS;
 }
 
-void yl_parser_delete(yl_parser_t *parser)
-{
-    yaml_parser_delete(parser);
-}
-
 void yl_event_delete(yl_event_t *event)
 {
     if (event->type) {
@@ -94,7 +62,7 @@ void yl_event_delete(yl_event_t *event)
     }
 }
 
-const char *yl_event_name(yl_event_type_t event_type)
+const char *yl_event_name(yaml_event_type_t event_type)
 {
-    return yaml_event_names[event_type];
+    return yl_event_names[event_type];
 }

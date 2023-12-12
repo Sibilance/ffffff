@@ -23,6 +23,8 @@ error.c: error.h
 main.c: parser.h
 parser.c: parser.h
 
+parser.h: error.h
+
 lua:
 	mkdir -p lua
 	curl https://www.lua.org/ftp/lua-5.4.6.tar.gz | tar xvzC lua --strip-components=1

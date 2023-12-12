@@ -22,6 +22,6 @@ typedef struct _yl_error_s {
     const char *error_message;
 } yl_error_t;
 
-const yl_error_t YL_SUCCESS = (yl_error_t){0};
+static const yl_error_t YL_SUCCESS = (yl_error_t){0};
 
 const char *yl_error_name(yl_error_type_t error_type);
