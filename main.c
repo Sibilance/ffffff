@@ -54,25 +54,25 @@ int main(int argc, char *argv[])
     }
 
     parser_t parser;
-    if (!init_parser_from_file(&parser, input)) {
+    if (!yl_init_parser_from_file(&parser, input)) {
         printf("Error initializing parser!\n");
         return 1;
     }
 
-    event_t event;
+    yl_event_t event;
     int done = 0;
     while (!done) {
-        if (!parser_parse(&parser, &event)) {
+        if (!yl_parser_parse(&parser, &event)) {
             printf("%zu:%zu: %s: %s: %s\n",
                    event.line,
                    event.column,
-                   error_name(event.error),
+                   yl_error_name(event.error),
                    event.error_context,
                    event.error_message);
             break;
         }
 
-        printf("%zu:%zu: %s\n", event.line, event.column, event_name(event.type));
+        printf("%zu:%zu: %s\n", event.line, event.column, yl_event_name(event.type));
         printf("  TAG: %s\n", event.tag);
         switch (event.type) {
         case YAML_SCALAR_EVENT:
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 
         done = (event.type == YAML_STREAM_END_EVENT);
 
-        event_delete(&event);
+        yl_event_delete(&event);
     }
 
     yaml_parser_delete(&parser);
