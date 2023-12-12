@@ -1,11 +1,13 @@
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 
 #include "yaml.h"
 
+#include "error.h"
+
 typedef yaml_parser_t yl_parser_t;
 typedef yaml_read_handler_t yl_read_handler_t;
-typedef yaml_error_type_t yl_error_type_t;
 typedef yaml_event_type_t yl_event_type_t;
 
 typedef struct _yl_event_s {
@@ -34,5 +36,4 @@ int yl_parser_parse(yl_parser_t *parser, yl_event_t *event);
 void yl_parser_delete(yl_parser_t *parser);
 void yl_event_delete(yl_event_t *event);
 
-const char *yl_error_name(yl_error_type_t error_type);
 const char *yl_event_name(yl_event_type_t event_type);

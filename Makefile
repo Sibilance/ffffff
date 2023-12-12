@@ -7,8 +7,11 @@ YL_LDLIBS = -llua -lyaml -largp
 .PHONY: all
 all: main.out
 
-main.out: main.o parser.o
+main.out: error.o main.o parser.o
 	$(CC) $(ALL_CFLAGS) $^ $(YL_LDFLAGS) $(YL_LDLIBS) -o main.out
+
+error.o: error.c libyaml/install
+	$(CC) $(ALL_CFLAGS) -c error.c
 
 main.o: main.c lua/install libyaml/install
 	$(CC) $(ALL_CFLAGS) -c main.c
@@ -16,8 +19,9 @@ main.o: main.c lua/install libyaml/install
 parser.o: parser.c libyaml/install
 	$(CC) $(ALL_CFLAGS) -c parser.c
 
-parser.c: parser.h
+error.c: error.h
 main.c: parser.h
+parser.c: parser.h
 
 lua:
 	mkdir -p lua

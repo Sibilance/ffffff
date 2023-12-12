@@ -1,16 +1,5 @@
 #include "parser.h"
 
-const char *yaml_error_names[] = {
-    "NO_ERROR",
-    "MEMORY_ERROR",
-    "READER_ERROR",
-    "SCANNER_ERROR",
-    "PARSER_ERROR",
-    "COMPOSER_ERROR",
-    "WRITER_ERROR",
-    "EMITTER_ERROR",
-};
-
 const char *yaml_event_names[] = {
     "NO_EVENT",
     "STREAM_START_EVENT",
@@ -55,7 +44,7 @@ int yl_init_parser_from_reader(yl_parser_t *parser, yl_read_handler_t *reader, v
 int yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
 {
     event->type = YAML_NO_EVENT;
-    event->error = YAML_NO_ERROR;
+    event->error = YL_NO_ERROR;
     event->error_message = 0;
     event->error_context = 0;
     event->tag = 0;
@@ -67,7 +56,7 @@ int yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
     if (!yaml_parser_parse(parser, _event)) {
         event->line = parser->problem_mark.line + 1;
         event->column = parser->problem_mark.column + 1;
-        event->error = parser->error;
+        event->error = (yl_error_type_t)parser->error;
         event->error_message = parser->problem;
         event->error_context = parser->context;
         event->tag = 0;
@@ -106,11 +95,6 @@ void yl_parser_delete(yl_parser_t *parser)
 void yl_event_delete(yl_event_t *event)
 {
     yaml_event_delete(&event->_event);
-}
-
-const char *yl_error_name(yl_error_type_t error_type)
-{
-    return yaml_error_names[error_type];
 }
 
 const char *yl_event_name(yl_event_type_t event_type)
