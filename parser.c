@@ -78,7 +78,7 @@ yl_error_t yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
         break;
     }
 
-    return (yl_error_t){0};
+    return YL_SUCCESS;
 }
 
 void yl_parser_delete(yl_parser_t *parser)
