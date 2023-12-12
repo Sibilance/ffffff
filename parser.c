@@ -25,7 +25,7 @@ const char *yaml_event_names[] = {
     "MAPPING_END_EVENT",
 };
 
-int yl_init_parser_from_string(parser_t *parser, const unsigned char *input, size_t size)
+int yl_init_parser_from_string(yl_parser_t *parser, const unsigned char *input, size_t size)
 {
     if (!yaml_parser_initialize(parser)) {
         return 0;
@@ -34,7 +34,7 @@ int yl_init_parser_from_string(parser_t *parser, const unsigned char *input, siz
     return 1;
 }
 
-int yl_init_parser_from_file(parser_t *parser, FILE *file)
+int yl_init_parser_from_file(yl_parser_t *parser, FILE *file)
 {
     if (!yaml_parser_initialize(parser)) {
         return 0;
@@ -43,7 +43,7 @@ int yl_init_parser_from_file(parser_t *parser, FILE *file)
     return 1;
 }
 
-int yl_init_parser_from_reader(parser_t *parser, read_handler_t *reader, void *data)
+int yl_init_parser_from_reader(yl_parser_t *parser, yl_read_handler_t *reader, void *data)
 {
     if (!yaml_parser_initialize(parser)) {
         return 0;
@@ -52,7 +52,7 @@ int yl_init_parser_from_reader(parser_t *parser, read_handler_t *reader, void *d
     return 1;
 }
 
-int yl_parser_parse(parser_t *parser, yl_event_t *event)
+int yl_parser_parse(yl_parser_t *parser, yl_event_t *event)
 {
     event->type = YAML_NO_EVENT;
     event->error = YAML_NO_ERROR;
@@ -98,7 +98,7 @@ int yl_parser_parse(parser_t *parser, yl_event_t *event)
     return 1;
 }
 
-void yl_parser_delete(parser_t *parser)
+void yl_parser_delete(yl_parser_t *parser)
 {
     yaml_parser_delete(parser);
 }
@@ -108,12 +108,12 @@ void yl_event_delete(yl_event_t *event)
     yaml_event_delete(&event->_event);
 }
 
-const char *yl_error_name(error_type_t error_type)
+const char *yl_error_name(yl_error_type_t error_type)
 {
     return yaml_error_names[error_type];
 }
 
-const char *yl_event_name(event_type_t event_type)
+const char *yl_event_name(yl_event_type_t event_type)
 {
     return yaml_event_names[event_type];
 }

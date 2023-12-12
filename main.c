@@ -1,6 +1,5 @@
 #include <argp.h>
-
-#include "lua.h"
+#include <stdio.h>
 
 #include "parser.h"
 
@@ -53,7 +52,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    parser_t parser;
+    yl_parser_t parser;
     if (!yl_init_parser_from_file(&parser, input)) {
         printf("Error initializing parser!\n");
         return 1;
