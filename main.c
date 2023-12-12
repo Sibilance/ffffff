@@ -61,15 +61,18 @@ int main(int argc, char *argv[])
     }
 
     yaml_parser_t parser;
+    yaml_emitter_t emitter;
+
     if (!yaml_parser_initialize(&parser)) {
         fprintf(stderr, "Error initializing parser!\n");
         return 1;
     }
     yaml_parser_set_input_file(&parser, args.input);
 
-    yaml_emitter_t emitter;
     if (!yaml_emitter_initialize(&emitter)) {
         fprintf(stderr, "Error initializing emitter!\n");
+        yaml_parser_delete(&parser);
+        return 1;
     }
     yaml_emitter_set_output_file(&emitter, args.output);
 
