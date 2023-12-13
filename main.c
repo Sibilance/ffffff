@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     }
     yaml_emitter_set_output_file(&emitter, args.output);
 
-    yl_event_t event;
+    yl_event_t event = {0};
     int done = 0;
     while (!done) {
         yl_error_t err = YL_SUCCESS;
