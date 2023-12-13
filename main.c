@@ -3,6 +3,7 @@
 
 #include "yaml.h"
 
+#include "executor.h"
 #include "parser.h"
 
 const char *argp_program_version = "yl 0.0.0";
@@ -40,6 +41,22 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
+int handler(void *data, yl_event_t *event, yl_error_t *err)
+{
+    fprintf(stderr, "%zu:%zu: %s\n", event->line, event->column, yl_event_name(event->type));
+    fprintf(stderr, "  TAG: %s\n", event->tag);
+    switch (event->type) {
+    case YAML_SCALAR_EVENT:
+        fprintf(stderr, "  QUOTED: %d\n  VALUE: %s\n",
+                event->quoted,
+                event->value);
+        break;
+    default:
+        break;
+    }
+    return 1;
+}
+
 int main(int argc, char *argv[])
 {
     struct arguments args = {
@@ -60,55 +77,42 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    yaml_parser_t parser;
+    yl_execution_context_t ctx = {0};
     yaml_emitter_t emitter;
 
-    if (!yaml_parser_initialize(&parser)) {
+    if (!yaml_parser_initialize(&ctx.parser)) {
         fprintf(stderr, "Error initializing parser!\n");
         return 1;
     }
-    yaml_parser_set_input_file(&parser, args.input);
+    yaml_parser_set_input_file(&ctx.parser, args.input);
 
     if (!yaml_emitter_initialize(&emitter)) {
         fprintf(stderr, "Error initializing emitter!\n");
-        yaml_parser_delete(&parser);
+        yaml_parser_delete(&ctx.parser);
         return 1;
     }
     yaml_emitter_set_output_file(&emitter, args.output);
 
-    yl_event_t event = {0};
-    int done = 0;
-    while (!done) {
-        yl_error_t err = YL_SUCCESS;
-        if (!yl_parser_parse(&parser, &event, &err)) {
-            fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
-                    err.line,
-                    err.column,
-                    yl_error_name(err.type),
-                    err.context,
-                    err.message);
-            break;
-        }
-
-        fprintf(stderr, "%zu:%zu: %s\n", event.line, event.column, yl_event_name(event.type));
-        fprintf(stderr, "  TAG: %s\n", event.tag);
-        switch (event.type) {
-        case YAML_SCALAR_EVENT:
-            fprintf(stderr, "  QUOTED: %d\n  VALUE: %s\n",
-                    event.quoted,
-                    event.value);
-            break;
-        default:
-            break;
-        }
-
-        done = (event.type == YAML_STREAM_END_EVENT);
-
-        yl_event_delete(&event);
+    ctx.handler = handler;
+    if (!yl_execute_stream(&ctx)) {
+        fprintf(stderr, "Error executing stream!\n");
+        fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
+                ctx.err.line,
+                ctx.err.column,
+                yl_error_name(ctx.err.type),
+                ctx.err.context,
+                ctx.err.message);
+        goto error;
     }
 
-    yaml_parser_delete(&parser);
+    yaml_parser_delete(&ctx.parser);
     yaml_emitter_delete(&emitter);
 
     return 0;
+
+error:
+    yaml_parser_delete(&ctx.parser);
+    yaml_emitter_delete(&emitter);
+
+    return 1;
 }

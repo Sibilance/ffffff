@@ -1,11 +1,8 @@
-#include "parser.h"
+#pragma once
 
-typedef struct _yl_execution_context_s {
-    yaml_parser_t parser;
-    yl_event_handler_t *handler;
-    void *data;
-    yl_error_t err;
-} yl_execution_context_t;
+#include "lua.h"
+
+#include "parser.h"
 
 /**
  * The prototype of an event handler.
@@ -22,6 +19,13 @@ typedef struct _yl_execution_context_s {
  * the returned value should be @c 0.
  */
 typedef int yl_event_handler_t(void *data, yl_event_t *event, yl_error_t *err);
+
+typedef struct _yl_execution_context_s {
+    yaml_parser_t parser;
+    yl_event_handler_t *handler;
+    void *data;
+    yl_error_t err;
+} yl_execution_context_t;
 
 int yl_execute_stream(yl_execution_context_t *ctx);
 int yl_execute_document(yl_execution_context_t *ctx);

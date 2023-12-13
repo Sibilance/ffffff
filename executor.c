@@ -1,5 +1,3 @@
-#include "lua.h"
-
 #include "executor.h"
 
 int yl_execute_stream(yl_execution_context_t *ctx)
@@ -32,7 +30,7 @@ int yl_execute_stream(yl_execution_context_t *ctx)
             goto error;
         }
 
-        if (!handler(ctx->data, &event, &ctx->err))
+        if (!ctx->handler(ctx->data, &event, &ctx->err))
             goto error;
 
         yl_event_delete(&event);
@@ -73,7 +71,7 @@ int yl_execute_document(yl_execution_context_t *ctx)
             goto error;
         }
 
-        if (!handler(ctx->data, &event, &ctx->err))
+        if (!ctx->handler(ctx->data, &event, &ctx->err))
             goto error;
 
         yl_event_delete(&event);
