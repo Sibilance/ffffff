@@ -2,6 +2,8 @@
 
 #include "yaml.h"
 
+#define YL_SUCCESS ((yl_error_t){0})
+
 typedef enum _yl_error_type_e {
     YL_NO_ERROR = YAML_NO_ERROR,
     YL_MEMORY_ERROR = YAML_MEMORY_ERROR,
@@ -18,10 +20,8 @@ typedef struct _yl_error_s {
 
     size_t line, column;
 
-    const char *error_context;
-    const char *error_message;
+    const char *context;
+    const char *message;
 } yl_error_t;
-
-#define YL_SUCCESS ((yl_error_t){0})
 
 const char *yl_error_name(yl_error_type_t error_type);

@@ -21,7 +21,7 @@ typedef struct _yl_event_s {
     yaml_event_t _event;
 } yl_event_t;
 
-yl_error_t yl_parser_parse(yaml_parser_t *parser, yl_event_t *event);
+int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err);
 
 void yl_event_delete(yl_event_t *event);
 

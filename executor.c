@@ -2,16 +2,14 @@
 
 #include "executor.h"
 
-yl_error_t yl_execute_stream(yaml_parser_t *parser, yaml_emitter_t *emitter)
+int yl_execute_stream(yaml_parser_t *parser, yaml_emitter_t *emitter, yl_error_t *err)
 {
-    yl_error_t err;
     yl_event_t event;
 
     bool done = false;
     while (!done) {
-        err = yl_parser_parse(parser, &event);
-        if (err.type)
-            return err;
+        if (!yl_parser_parse(parser, &event, err))
+            return 0;
 
         switch (event.type) {
         case YAML_STREAM_START_EVENT:
@@ -19,9 +17,8 @@ yl_error_t yl_execute_stream(yaml_parser_t *parser, yaml_emitter_t *emitter)
             // already would have consumed this before calling yl_execute_stream().
             break;
         case YAML_DOCUMENT_START_EVENT:
-            err = yl_execute_document(parser, emitter);
-            if (err.type)
-                return err;
+            if (!yl_execute_document(parser, emitter, err))
+                return 0;
             break;
         case YAML_STREAM_END_EVENT:
             done = true;
@@ -31,10 +28,10 @@ yl_error_t yl_execute_stream(yaml_parser_t *parser, yaml_emitter_t *emitter)
         yl_event_delete(&event);
     }
 
-    return YL_SUCCESS;
+    return 1;
 }
 
-yl_error_t yl_execute_document(yaml_parser_t *parser, yaml_emitter_t *emitter)
+int yl_execute_document(yaml_parser_t *parser, yaml_emitter_t *emitter, yl_error_t *err)
 {
-    return YL_SUCCESS;
+    return 1;
 }
