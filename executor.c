@@ -4,7 +4,7 @@
 
 int yl_execute_stream(yaml_parser_t *parser, yl_event_handler_t *handler, void *data, yl_error_t *err)
 {
-    yl_event_t event;
+    yl_event_t event = {0};
 
     bool done = false;
     while (!done) {
@@ -24,13 +24,25 @@ int yl_execute_stream(yaml_parser_t *parser, yl_event_handler_t *handler, void *
             done = true;
             break;
         default:
-            break;
+            err->type = YL_PARSER_ERROR;
+            err->line = event.line;
+            err->column = event.column;
+            err->context = "While executing a stream, got unexpected event";
+            err->message = yl_event_name(event.type);
+            goto error;
         }
+
+        if (!handler(data, &event, err))
+            goto error;
 
         yl_event_delete(&event);
     }
 
     return 1;
+
+error:
+    yl_event_delete(&event);
+    return 0;
 }
 
 int yl_execute_document(yaml_parser_t *parser, yl_event_handler_t *handler, void *data, yl_error_t *err)
@@ -53,8 +65,22 @@ int yl_execute_document(yaml_parser_t *parser, yl_event_handler_t *handler, void
             done = true;
             break;
         default:
-            break;
+            err->type = YL_PARSER_ERROR;
+            err->line = event.line;
+            err->column = event.column;
+            err->context = "While executing a document, got unexpected event";
+            err->message = yl_event_name(event.type);
+            goto error;
         }
+
+        if (!handler(data, &event, err))
+            goto error;
+
+        yl_event_delete(&event);
     }
     return 1;
+
+error:
+    yl_event_delete(&event);
+    return 0;
 }
