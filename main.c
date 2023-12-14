@@ -1,6 +1,8 @@
 #include <argp.h>
 #include <stdio.h>
 
+#include "lauxlib.h"
+#include "lualib.h"
 #include "yaml.h"
 
 #include "executor.h"
@@ -78,20 +80,26 @@ int main(int argc, char *argv[])
     }
 
     yl_execution_context_t ctx = {0};
-    yaml_emitter_t emitter;
+    yaml_emitter_t emitter = {0};
 
     if (!yaml_parser_initialize(&ctx.parser)) {
         fprintf(stderr, "Error initializing parser!\n");
-        return 1;
+        goto error;
     }
     yaml_parser_set_input_file(&ctx.parser, args.input);
 
     if (!yaml_emitter_initialize(&emitter)) {
         fprintf(stderr, "Error initializing emitter!\n");
-        yaml_parser_delete(&ctx.parser);
-        return 1;
+        goto error;
     }
     yaml_emitter_set_output_file(&emitter, args.output);
+
+    ctx.lua = luaL_newstate();
+    luaopen_base(ctx.lua);
+    luaopen_table(ctx.lua);
+    luaopen_string(ctx.lua);
+    luaopen_utf8(ctx.lua);
+    luaopen_math(ctx.lua);
 
     ctx.handler = handler;
     if (!yl_execute_stream(&ctx)) {
@@ -107,12 +115,15 @@ int main(int argc, char *argv[])
 
     yaml_parser_delete(&ctx.parser);
     yaml_emitter_delete(&emitter);
+    lua_close(ctx.lua);
 
     return 0;
 
 error:
     yaml_parser_delete(&ctx.parser);
     yaml_emitter_delete(&emitter);
+    if (ctx.lua)
+        lua_close(ctx.lua);
 
     return 1;
 }

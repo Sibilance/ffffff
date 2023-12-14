@@ -22,6 +22,7 @@ typedef int yl_event_handler_t(void *data, yl_event_t *event, yl_error_t *err);
 
 typedef struct _yl_execution_context_s {
     yaml_parser_t parser;
+    lua_State *lua;
     yl_event_handler_t *handler;
     void *data;
     yl_error_t err;
