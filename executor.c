@@ -1,4 +1,31 @@
+#include "lauxlib.h"
+
 #include "executor.h"
+
+static int error_handler(lua_State *L)
+{
+    const char *msg = lua_tostring(L, 1);
+    luaL_traceback(L, L, msg, 1);
+    lua_remove(L, 1); // Remove original error message string.
+    return 1;
+}
+
+static int execute_lua(lua_State *L, const char *buf, size_t len)
+{
+    int base = lua_gettop(L);
+    lua_pushcfunction(L, error_handler);
+
+    int status = luaL_loadbufferx(L, buf, len, buf, "t");
+    if (status != LUA_OK) {
+        lua_settop(L, base); // Restore the stack.
+        return status;
+    }
+
+    status = lua_pcall(L, 0, 1, base + 1);
+
+    lua_remove(L, base + 1); // Remove the error_handler.
+    return status;
+}
 
 int yl_execute_stream(yl_execution_context_t *ctx)
 {
@@ -54,6 +81,8 @@ int yl_execute_document(yl_execution_context_t *ctx)
 
         switch (event.type) {
         case YAML_SCALAR_EVENT:
+            if (0)
+                execute_lua(ctx->lua, "0", 1);
             break;
         case YAML_SEQUENCE_START_EVENT:
             break;
