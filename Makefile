@@ -10,17 +10,10 @@ all: main.out
 main.out: error.o executor.o main.o parser.o
 	$(CC) $(ALL_CFLAGS) $^ $(YL_LDFLAGS) $(YL_LDLIBS) -o main.out
 
-error.o: error.c libyaml/install
-	$(CC) $(ALL_CFLAGS) -c error.c
-
-executor.o: executor.c libyaml/install lua/install
-	$(CC) $(ALL_CFLAGS) -c executor.c
-
-main.o: main.c lua/install libyaml/install
-	$(CC) $(ALL_CFLAGS) -c main.c
-
-parser.o: parser.c libyaml/install
-	$(CC) $(ALL_CFLAGS) -c parser.c
+error.o: libyaml/install
+executor.o: lua/install libyaml/install
+main.o: lua/install libyaml/install
+parser.o: libyaml/install
 
 error.c: error.h
 executor.c: executor.h
@@ -29,6 +22,12 @@ parser.c: parser.h
 
 parser.h: error.h
 executor.h: parser.h
+
+%.o: %.c 
+	$(CC) $(ALL_CFLAGS) -c $<
+
+%.h %.c:  # Propagate file save timestamps onto dependees.
+	touch $@
 
 lua:
 	mkdir -p lua
