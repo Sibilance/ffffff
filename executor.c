@@ -217,13 +217,15 @@ error:
 
 int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event)
 {
-    if (event->quoted || !event->tag || strcmp(event->tag, "!") != 0) {
+    if (event->quoted ||
+        !event->event.data.scalar.tag ||
+        strcmp((char *)event->event.data.scalar.tag, "!") != 0) {
         if (!ctx->handler(ctx->data, event, &ctx->err))
             goto error;
         return 1;
     }
 
-    int status = execute_lua(ctx->lua, event->value);
+    int status = execute_lua(ctx->lua, (char *)event->event.data.scalar.value);
 
     if (status == LUA_OK) {
         int type = lua_type(ctx->lua, 1);

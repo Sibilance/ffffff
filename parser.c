@@ -18,7 +18,7 @@ int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err)
 {
     *event = (yl_event_t){0};
 
-    yaml_event_t *_event = &event->_event;
+    yaml_event_t *_event = &event->event;
 
     if (!yaml_parser_parse(parser, _event)) {
         err->type = (yl_error_type_t)parser->error;
@@ -34,22 +34,9 @@ int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err)
     event->line = _event->start_mark.line + 1;
     event->column = _event->start_mark.column + 1;
 
-    switch (_event->type) {
-    case YAML_SCALAR_EVENT:
-        event->tag = (const char *)_event->data.scalar.tag;
-        event->value = (const char *)_event->data.scalar.value;
-        event->length = _event->data.scalar.length;
+    if (_event->type == YAML_SCALAR_EVENT) {
         yaml_scalar_style_t style = _event->data.scalar.style;
         event->quoted = style == YAML_DOUBLE_QUOTED_SCALAR_STYLE || style == YAML_SINGLE_QUOTED_SCALAR_STYLE;
-        break;
-    case YAML_SEQUENCE_START_EVENT:
-        event->tag = (const char *)_event->data.sequence_start.tag;
-        break;
-    case YAML_MAPPING_START_EVENT:
-        event->tag = (const char *)_event->data.mapping_start.tag;
-        break;
-    default:
-        break;
     }
 
     return 1;
@@ -58,7 +45,7 @@ int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err)
 void yl_event_delete(yl_event_t *event)
 {
     if (event->type) {
-        yaml_event_delete(&event->_event);
+        yaml_event_delete(&event->event);
         *event = (yl_event_t){0};
     }
 }

@@ -15,13 +15,9 @@ typedef struct _yl_event_s {
     yl_event_type_t type;
 
     size_t line, column;
-
-    const char *tag;
-    const char *value;
-    size_t length;
     bool quoted;
 
-    yaml_event_t _event;
+    yaml_event_t event;
 } yl_event_t;
 
 int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err);

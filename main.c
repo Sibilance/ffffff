@@ -46,12 +46,18 @@ static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 int handler(void *data, yl_event_t *event, yl_error_t *err)
 {
     fprintf(stderr, "%zu:%zu: %s\n", event->line, event->column, yl_event_name(event->type));
-    fprintf(stderr, "  TAG: %s\n", event->tag);
     switch (event->type) {
     case YAML_SCALAR_EVENT:
+        fprintf(stderr, "  TAG: %s\n", event->event.data.scalar.tag);
         fprintf(stderr, "  QUOTED: %d\n  VALUE: %s\n",
                 event->quoted,
-                event->value);
+                event->event.data.scalar.value);
+        break;
+    case YAML_SEQUENCE_START_EVENT:
+        fprintf(stderr, "  TAG: %s\n", event->event.data.sequence_start.tag);
+        break;
+    case YAML_MAPPING_START_EVENT:
+        fprintf(stderr, "  TAG: %s\n", event->event.data.mapping_start.tag);
         break;
     default:
         break;
