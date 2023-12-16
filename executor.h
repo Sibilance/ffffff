@@ -29,6 +29,7 @@ typedef struct _yl_execution_context_s {
 } yl_execution_context_t;
 
 int yl_execute_stream(yl_execution_context_t *ctx);
-int yl_execute_document(yl_execution_context_t *ctx);
-int yl_execute_sequence(yl_execution_context_t *ctx);
-int yl_execute_mapping(yl_execution_context_t *ctx);
+int yl_execute_document(yl_execution_context_t *ctx, yl_event_t *event);
+int yl_execute_sequence(yl_execution_context_t *ctx, yl_event_t *event);
+int yl_execute_mapping(yl_execution_context_t *ctx, yl_event_t *event);
+int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event);
