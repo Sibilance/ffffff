@@ -230,9 +230,9 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event)
         switch (type) {
         case LUA_TNUMBER:
             if (lua_isinteger(ctx->lua, 1)) {
-                printf("LUA INTEGER: %s\n", lua_tostring(ctx->lua, 1));
+                printf("LUA INTEGER: %lld\n", lua_tointeger(ctx->lua, 1));
             } else {
-                printf("LUA FLOAT: %s\n", lua_tostring(ctx->lua, 1));
+                printf("LUA FLOAT: %f\n", lua_tonumber(ctx->lua, 1));
             }
             break;
         case LUA_TBOOLEAN:
