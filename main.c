@@ -45,12 +45,15 @@ static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
 int handler(void *data, yl_event_t *event, yl_error_t *err)
 {
-    fprintf(stderr, "%zu:%zu: %s\n", event->line, event->column, yl_event_name(event->type));
-    switch (event->type) {
+    yaml_scalar_style_t style;
+    fprintf(stderr, "%zu:%zu: %s\n", event->line, event->column, yl_event_name(event->event.type));
+    switch (event->event.type) {
     case YAML_SCALAR_EVENT:
+        style = event->event.data.scalar.style;
+        bool quoted = style == YAML_DOUBLE_QUOTED_SCALAR_STYLE || style == YAML_SINGLE_QUOTED_SCALAR_STYLE;
         fprintf(stderr, "  TAG: %s\n", event->event.data.scalar.tag);
         fprintf(stderr, "  QUOTED: %d\n  VALUE: %s\n",
-                event->quoted,
+                quoted,
                 event->event.data.scalar.value);
         break;
     case YAML_SEQUENCE_START_EVENT:

@@ -12,10 +12,7 @@ typedef yaml_event_type_t yl_event_type_t;
 typedef yaml_read_handler_t yl_read_handler_t;
 
 typedef struct _yl_event_s {
-    yl_event_type_t type;
-
     size_t line, column;
-    bool quoted;
 
     yaml_event_t event;
 } yl_event_t;
