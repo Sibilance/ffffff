@@ -14,16 +14,14 @@ const char *yl_event_names[] = {
     "MAPPING_END_EVENT",
 };
 
-int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err)
+int yl_parser_parse(yaml_parser_t *parser, yaml_event_t *event, yl_error_t *err)
 {
-    *event = (yl_event_t){0};
+    *event = (yaml_event_t){0};
 
-    yaml_event_t *_event = &event->event;
-
-    if (!yaml_parser_parse(parser, _event)) {
+    if (!yaml_parser_parse(parser, event)) {
         err->type = (yl_error_type_t)parser->error;
-        err->line = parser->problem_mark.line + 1;
-        err->column = parser->problem_mark.column + 1;
+        err->line = parser->problem_mark.line;
+        err->column = parser->problem_mark.column;
         err->context = parser->context;
         err->message = parser->problem;
 
@@ -31,14 +29,6 @@ int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err)
     }
 
     return 1;
-}
-
-void yl_event_delete(yl_event_t *event)
-{
-    if (event->event.type) {
-        yaml_event_delete(&event->event);
-        *event = (yl_event_t){0};
-    }
 }
 
 const char *yl_event_name(yaml_event_type_t event_type)

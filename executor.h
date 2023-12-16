@@ -18,7 +18,7 @@
  * @returns On success, the handler should return @c 1. If the handler failed,
  * the returned value should be @c 0.
  */
-typedef int yl_event_handler_t(void *data, yl_event_t *event, yl_error_t *err);
+typedef int yl_event_handler_t(void *data, yaml_event_t *event, yl_error_t *err);
 
 typedef struct _yl_execution_context_s {
     yaml_parser_t parser;
@@ -29,7 +29,7 @@ typedef struct _yl_execution_context_s {
 } yl_execution_context_t;
 
 int yl_execute_stream(yl_execution_context_t *ctx);
-int yl_execute_document(yl_execution_context_t *ctx, yl_event_t *event);
-int yl_execute_sequence(yl_execution_context_t *ctx, yl_event_t *event);
-int yl_execute_mapping(yl_execution_context_t *ctx, yl_event_t *event);
-int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event);
+int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event);
+int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event);
+int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event);
+int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event);

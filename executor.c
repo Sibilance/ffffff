@@ -31,14 +31,14 @@ static int execute_lua(lua_State *L, const char *buf)
 
 int yl_execute_stream(yl_execution_context_t *ctx)
 {
-    yl_event_t next_event = {0};
+    yaml_event_t next_event = {0};
 
     bool done = false;
     while (!done) {
         if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
             return 0;
 
-        switch (next_event.event.type) {
+        switch (next_event.type) {
         case YAML_STREAM_START_EVENT:
             if (!ctx->handler(ctx->data, &next_event, &ctx->err))
                 goto error;
@@ -54,26 +54,26 @@ int yl_execute_stream(yl_execution_context_t *ctx)
             break;
         default:
             ctx->err.type = YL_EXECUTION_ERROR;
-            ctx->err.line = next_event.event.start_mark.line;
-            ctx->err.column = next_event.event.start_mark.column;
+            ctx->err.line = next_event.start_mark.line;
+            ctx->err.column = next_event.start_mark.column;
             ctx->err.context = "While executing a stream, got unexpected event";
-            ctx->err.message = yl_event_name(next_event.event.type);
+            ctx->err.message = yl_event_name(next_event.type);
             goto error;
         }
 
-        yl_event_delete(&next_event);
+        yaml_event_delete(&next_event);
     }
 
     return 1;
 
 error:
-    yl_event_delete(&next_event);
+    yaml_event_delete(&next_event);
     return 0;
 }
 
-int yl_execute_document(yl_execution_context_t *ctx, yl_event_t *event)
+int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 {
-    yl_event_t next_event = {0};
+    yaml_event_t next_event = {0};
 
     if (!ctx->handler(ctx->data, event, &ctx->err))
         goto error;
@@ -83,7 +83,7 @@ int yl_execute_document(yl_execution_context_t *ctx, yl_event_t *event)
         if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
             return 0;
 
-        switch (next_event.event.type) {
+        switch (next_event.type) {
         case YAML_SCALAR_EVENT:
             if (!yl_execute_scalar(ctx, &next_event))
                 goto error;
@@ -103,25 +103,25 @@ int yl_execute_document(yl_execution_context_t *ctx, yl_event_t *event)
             break;
         default:
             ctx->err.type = YL_EXECUTION_ERROR;
-            ctx->err.line = next_event.event.start_mark.line;
-            ctx->err.column = next_event.event.start_mark.column;
+            ctx->err.line = next_event.start_mark.line;
+            ctx->err.column = next_event.start_mark.column;
             ctx->err.context = "While executing a document, got unexpected event";
-            ctx->err.message = yl_event_name(next_event.event.type);
+            ctx->err.message = yl_event_name(next_event.type);
             goto error;
         }
 
-        yl_event_delete(&next_event);
+        yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
-    yl_event_delete(&next_event);
+    yaml_event_delete(&next_event);
     return 0;
 }
 
-int yl_execute_sequence(yl_execution_context_t *ctx, yl_event_t *event)
+int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 {
-    yl_event_t next_event = {0};
+    yaml_event_t next_event = {0};
 
     if (!ctx->handler(ctx->data, event, &ctx->err))
         goto error;
@@ -131,7 +131,7 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yl_event_t *event)
         if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
             return 0;
 
-        switch (next_event.event.type) {
+        switch (next_event.type) {
         case YAML_SCALAR_EVENT:
             if (!yl_execute_scalar(ctx, &next_event))
                 goto error;
@@ -151,25 +151,25 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yl_event_t *event)
             break;
         default:
             ctx->err.type = YL_EXECUTION_ERROR;
-            ctx->err.line = next_event.event.start_mark.line;
-            ctx->err.column = next_event.event.start_mark.column;
+            ctx->err.line = next_event.start_mark.line;
+            ctx->err.column = next_event.start_mark.column;
             ctx->err.context = "While executing a sequence, got unexpected event";
-            ctx->err.message = yl_event_name(next_event.event.type);
+            ctx->err.message = yl_event_name(next_event.type);
             goto error;
         }
 
-        yl_event_delete(&next_event);
+        yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
-    yl_event_delete(&next_event);
+    yaml_event_delete(&next_event);
     return 0;
 }
 
-int yl_execute_mapping(yl_execution_context_t *ctx, yl_event_t *event)
+int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 {
-    yl_event_t next_event = {0};
+    yaml_event_t next_event = {0};
 
     if (!ctx->handler(ctx->data, event, &ctx->err))
         goto error;
@@ -179,7 +179,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yl_event_t *event)
         if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
             return 0;
 
-        switch (next_event.event.type) {
+        switch (next_event.type) {
         case YAML_SCALAR_EVENT:
             if (!yl_execute_scalar(ctx, &next_event))
                 goto error;
@@ -199,35 +199,35 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yl_event_t *event)
             break;
         default:
             ctx->err.type = YL_EXECUTION_ERROR;
-            ctx->err.line = next_event.event.start_mark.line;
-            ctx->err.column = next_event.event.start_mark.column;
+            ctx->err.line = next_event.start_mark.line;
+            ctx->err.column = next_event.start_mark.column;
             ctx->err.context = "While executing a mapping, got unexpected event";
-            ctx->err.message = yl_event_name(next_event.event.type);
+            ctx->err.message = yl_event_name(next_event.type);
             goto error;
         }
 
-        yl_event_delete(&next_event);
+        yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
-    yl_event_delete(&next_event);
+    yaml_event_delete(&next_event);
     return 0;
 }
 
-int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event)
+int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
 {
-    yaml_scalar_style_t style = event->event.data.scalar.style;
+    yaml_scalar_style_t style = event->data.scalar.style;
     if (style == YAML_DOUBLE_QUOTED_SCALAR_STYLE ||
         style == YAML_SINGLE_QUOTED_SCALAR_STYLE ||
-        !event->event.data.scalar.tag ||
-        strcmp((char *)event->event.data.scalar.tag, "!") != 0) {
+        !event->data.scalar.tag ||
+        strcmp((char *)event->data.scalar.tag, "!") != 0) {
         if (!ctx->handler(ctx->data, event, &ctx->err))
             goto error;
         return 1;
     }
 
-    int status = execute_lua(ctx->lua, (char *)event->event.data.scalar.value);
+    int status = execute_lua(ctx->lua, (char *)event->data.scalar.value);
 
     if (status == LUA_OK) {
         int type = lua_type(ctx->lua, 1);
@@ -253,8 +253,8 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event)
             break;
         default:
             ctx->err.type = YL_TYPE_ERROR;
-            ctx->err.line = event->event.start_mark.line;
-            ctx->err.column = event->event.start_mark.column;
+            ctx->err.line = event->start_mark.line;
+            ctx->err.column = event->start_mark.column;
             ctx->err.context = "While executing a scalar, got unexpected return type";
             ctx->err.message = lua_typename(ctx->lua, type);
             goto error;
@@ -278,8 +278,8 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event)
             ctx->err.type = YL_EXECUTION_ERROR;
             break;
         }
-        ctx->err.line = event->event.start_mark.line;
-        ctx->err.column = event->event.start_mark.column;
+        ctx->err.line = event->start_mark.line;
+        ctx->err.column = event->start_mark.column;
         ctx->err.context = "While executing a scalar, encountered an error";
         ctx->err.message = lua_tostring(ctx->lua, 1);
         goto error;

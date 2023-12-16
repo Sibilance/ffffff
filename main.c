@@ -43,24 +43,24 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
-int handler(void *data, yl_event_t *event, yl_error_t *err)
+int handler(void *data, yaml_event_t *event, yl_error_t *err)
 {
     yaml_scalar_style_t style;
-    fprintf(stderr, "%zu:%zu: %s\n", event->event.start_mark.line, event->event.start_mark.column, yl_event_name(event->event.type));
-    switch (event->event.type) {
+    fprintf(stderr, "%zu:%zu: %s\n", event->start_mark.line + 1, event->start_mark.column + 1, yl_event_name(event->type));
+    switch (event->type) {
     case YAML_SCALAR_EVENT:
-        style = event->event.data.scalar.style;
+        style = event->data.scalar.style;
         bool quoted = style == YAML_DOUBLE_QUOTED_SCALAR_STYLE || style == YAML_SINGLE_QUOTED_SCALAR_STYLE;
-        fprintf(stderr, "  TAG: %s\n", event->event.data.scalar.tag);
+        fprintf(stderr, "  TAG: %s\n", event->data.scalar.tag);
         fprintf(stderr, "  QUOTED: %d\n  VALUE: %s\n",
                 quoted,
-                event->event.data.scalar.value);
+                event->data.scalar.value);
         break;
     case YAML_SEQUENCE_START_EVENT:
-        fprintf(stderr, "  TAG: %s\n", event->event.data.sequence_start.tag);
+        fprintf(stderr, "  TAG: %s\n", event->data.sequence_start.tag);
         break;
     case YAML_MAPPING_START_EVENT:
-        fprintf(stderr, "  TAG: %s\n", event->event.data.mapping_start.tag);
+        fprintf(stderr, "  TAG: %s\n", event->data.mapping_start.tag);
         break;
     default:
         break;
