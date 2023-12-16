@@ -30,9 +30,6 @@ int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err)
         return 0;
     }
 
-    event->line = _event->start_mark.line + 1;
-    event->column = _event->start_mark.column + 1;
-
     return 1;
 }
 

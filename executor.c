@@ -54,8 +54,8 @@ int yl_execute_stream(yl_execution_context_t *ctx)
             break;
         default:
             ctx->err.type = YL_EXECUTION_ERROR;
-            ctx->err.line = next_event.line;
-            ctx->err.column = next_event.column;
+            ctx->err.line = next_event.event.start_mark.line;
+            ctx->err.column = next_event.event.start_mark.column;
             ctx->err.context = "While executing a stream, got unexpected event";
             ctx->err.message = yl_event_name(next_event.event.type);
             goto error;
@@ -103,8 +103,8 @@ int yl_execute_document(yl_execution_context_t *ctx, yl_event_t *event)
             break;
         default:
             ctx->err.type = YL_EXECUTION_ERROR;
-            ctx->err.line = next_event.line;
-            ctx->err.column = next_event.column;
+            ctx->err.line = next_event.event.start_mark.line;
+            ctx->err.column = next_event.event.start_mark.column;
             ctx->err.context = "While executing a document, got unexpected event";
             ctx->err.message = yl_event_name(next_event.event.type);
             goto error;
@@ -151,8 +151,8 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yl_event_t *event)
             break;
         default:
             ctx->err.type = YL_EXECUTION_ERROR;
-            ctx->err.line = next_event.line;
-            ctx->err.column = next_event.column;
+            ctx->err.line = next_event.event.start_mark.line;
+            ctx->err.column = next_event.event.start_mark.column;
             ctx->err.context = "While executing a sequence, got unexpected event";
             ctx->err.message = yl_event_name(next_event.event.type);
             goto error;
@@ -199,8 +199,8 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yl_event_t *event)
             break;
         default:
             ctx->err.type = YL_EXECUTION_ERROR;
-            ctx->err.line = next_event.line;
-            ctx->err.column = next_event.column;
+            ctx->err.line = next_event.event.start_mark.line;
+            ctx->err.column = next_event.event.start_mark.column;
             ctx->err.context = "While executing a mapping, got unexpected event";
             ctx->err.message = yl_event_name(next_event.event.type);
             goto error;
@@ -253,8 +253,8 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event)
             break;
         default:
             ctx->err.type = YL_TYPE_ERROR;
-            ctx->err.line = event->line;
-            ctx->err.column = event->column;
+            ctx->err.line = event->event.start_mark.line;
+            ctx->err.column = event->event.start_mark.column;
             ctx->err.context = "While executing a scalar, got unexpected return type";
             ctx->err.message = lua_typename(ctx->lua, type);
             goto error;
@@ -278,8 +278,8 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yl_event_t *event)
             ctx->err.type = YL_EXECUTION_ERROR;
             break;
         }
-        ctx->err.line = event->line;
-        ctx->err.column = event->column;
+        ctx->err.line = event->event.start_mark.line;
+        ctx->err.column = event->event.start_mark.column;
         ctx->err.context = "While executing a scalar, encountered an error";
         ctx->err.message = lua_tostring(ctx->lua, 1);
         goto error;
