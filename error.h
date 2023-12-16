@@ -15,6 +15,7 @@ typedef enum _yl_error_type_e {
     YL_COMPOSER_ERROR = YAML_COMPOSER_ERROR,
     YL_WRITER_ERROR = YAML_WRITER_ERROR,
     YL_EMITTER_ERROR = YAML_EMITTER_ERROR,
+    YL_EXECUTION_ERROR,
 } yl_error_type_t;
 
 typedef struct _yl_error_s {

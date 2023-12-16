@@ -30,3 +30,5 @@ typedef struct _yl_execution_context_s {
 
 int yl_execute_stream(yl_execution_context_t *ctx);
 int yl_execute_document(yl_execution_context_t *ctx);
+int yl_execute_sequence(yl_execution_context_t *ctx);
+int yl_execute_mapping(yl_execution_context_t *ctx);

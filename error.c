@@ -9,6 +9,7 @@ const char *yaml_error_names[] = {
     "COMPOSER_ERROR",
     "WRITER_ERROR",
     "EMITTER_ERROR",
+    "EXECUTION_ERROR",
 };
 
 const char *yl_error_name(yl_error_type_t error_type)
