@@ -243,6 +243,9 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             printf("LUA BOOL: %s\n", lua_toboolean(ctx->lua, 1) ? "true" : "false");
             break;
         case LUA_TSTRING:
+            free(event->data.scalar.value);
+            const char *lua_string = lua_tolstring(ctx->lua, 1, &event->data.scalar.length);
+            event->data.scalar.value = (yaml_char_t *)strndup(lua_string, event->data.scalar.length);
             printf("LUA STRING: %s\n", lua_tostring(ctx->lua, 1));
             break;
         case LUA_TTABLE:
@@ -284,6 +287,9 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         ctx->err.message = lua_tostring(ctx->lua, 1);
         goto error;
     }
+
+    if (!ctx->handler(ctx->data, event, &ctx->err))
+        goto error;
 
     return 1;
 
