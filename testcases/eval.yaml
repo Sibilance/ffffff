@@ -1,8 +1,26 @@
 ---
 ! >
+  "hello"
+---
+"hello"
+
+---
+! >
   "hello" .. " " .. "world"
 ---
 "hello world"
+
+---
+! >
+  true
+---
+true
+
+---
+! >
+  false
+---
+false
 
 ---
 ! 3 + 4

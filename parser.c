@@ -38,6 +38,7 @@ int yl_parser_parse(yaml_parser_t *parser, yl_event_t *event, yl_error_t *err)
     case YAML_SCALAR_EVENT:
         event->tag = (const char *)_event->data.scalar.tag;
         event->value = (const char *)_event->data.scalar.value;
+        event->length = _event->data.scalar.length;
         yaml_scalar_style_t style = _event->data.scalar.style;
         event->quoted = style == YAML_DOUBLE_QUOTED_SCALAR_STYLE || style == YAML_SINGLE_QUOTED_SCALAR_STYLE;
         break;

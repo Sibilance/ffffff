@@ -18,6 +18,7 @@ typedef struct _yl_event_s {
 
     const char *tag;
     const char *value;
+    size_t length;
     bool quoted;
 
     yaml_event_t _event;
