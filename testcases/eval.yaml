@@ -23,6 +23,11 @@ true
 false
 
 ---
+! undefined_variable
+---
+~
+
+---
 ! 3 + 4
 ---
 7

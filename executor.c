@@ -283,6 +283,10 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             printf("LUA TABLE: TBD\n");
             break;
         case LUA_TNIL:
+            free(event->data.scalar.value);
+            event->data.scalar.value = (yaml_char_t *)strdup("~");
+            event->data.scalar.length = 1;
+            event->data.scalar.style = YAML_LITERAL_SCALAR_STYLE;
             printf("LUA NIL\n");
             break;
         default:
