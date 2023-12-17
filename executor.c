@@ -267,6 +267,10 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             event->data.scalar.style = YAML_LITERAL_SCALAR_STYLE;
         } break;
         case LUA_TBOOLEAN:
+            free(event->data.scalar.value);
+            event->data.scalar.value = (yaml_char_t *)strdup(lua_toboolean(ctx->lua, 1) ? "true" : "false");
+            event->data.scalar.length = strlen((char *)event->data.scalar.value);
+            event->data.scalar.style = YAML_LITERAL_SCALAR_STYLE;
             printf("LUA BOOL: %s\n", lua_toboolean(ctx->lua, 1) ? "true" : "false");
             break;
         case LUA_TSTRING:
