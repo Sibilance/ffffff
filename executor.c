@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "lauxlib.h"
 
 #include "executor.h"
@@ -232,29 +234,38 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     if (status == LUA_OK) {
         int type = lua_type(ctx->lua, 1);
         switch (type) {
-        case LUA_TNUMBER:
+        case LUA_TNUMBER: {
+            // -2^63 is 20 characters, plus NULL.
+            // Also plenty for 17 digit precision floats.
+            // We trim it down to the actual size after formatting.
+            char *buf = malloc(32);
+            int len;
             if (lua_isinteger(ctx->lua, 1)) {
-                char *buf = malloc(32); // -2^63 is 20 characters, plus NULL.
-                int len = sprintf(buf, "%lld", lua_tointeger(ctx->lua, 1));
-                if (len < 0) {
-                    free(buf);
-                    ctx->err.type = YL_RUNTIME_ERROR;
-                    ctx->err.line = event->start_mark.line;
-                    ctx->err.column = event->start_mark.column;
-                    ctx->err.context = "While executing a scalar, got error formatting integer";
-                    ctx->err.message = "sprintf failed";
-                    goto error;
-                }
-                free(event->data.scalar.value);
-                event->data.scalar.value = (yaml_char_t *)strndup(buf, len);
-                free(buf);
-                event->data.scalar.length = len;
-                event->data.scalar.style = YAML_LITERAL_SCALAR_STYLE;
+                len = sprintf(buf, "%lld", lua_tointeger(ctx->lua, 1));
                 printf("LUA INTEGER: %lld\n", lua_tointeger(ctx->lua, 1));
             } else {
-                printf("LUA FLOAT: %f\n", lua_tonumber(ctx->lua, 1));
+                len = sprintf(buf, "%.17g", lua_tonumber(ctx->lua, 1));
+                if (strchr(buf, '.') == NULL && strchr(buf, 'e') == NULL) {
+                    strcpy(buf + len, ".0");
+                    len += 2;
+                }
+                printf("LUA FLOAT: %#.17g\n", lua_tonumber(ctx->lua, 1));
             }
-            break;
+            if (len < 0) {
+                free(buf);
+                ctx->err.type = YL_RUNTIME_ERROR;
+                ctx->err.line = event->start_mark.line;
+                ctx->err.column = event->start_mark.column;
+                ctx->err.context = "While executing a scalar, got error formatting integer";
+                ctx->err.message = "sprintf failed";
+                goto error;
+            }
+            free(event->data.scalar.value);
+            event->data.scalar.value = (yaml_char_t *)strndup(buf, len);
+            event->data.scalar.length = len;
+            free(buf);
+            event->data.scalar.style = YAML_LITERAL_SCALAR_STYLE;
+        } break;
         case LUA_TBOOLEAN:
             printf("LUA BOOL: %s\n", lua_toboolean(ctx->lua, 1) ? "true" : "false");
             break;
