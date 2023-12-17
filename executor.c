@@ -234,6 +234,22 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         switch (type) {
         case LUA_TNUMBER:
             if (lua_isinteger(ctx->lua, 1)) {
+                char *buf = malloc(32); // -2^63 is 20 characters, plus NULL.
+                int len = sprintf(buf, "%lld", lua_tointeger(ctx->lua, 1));
+                if (len < 0) {
+                    free(buf);
+                    ctx->err.type = YL_RUNTIME_ERROR;
+                    ctx->err.line = event->start_mark.line;
+                    ctx->err.column = event->start_mark.column;
+                    ctx->err.context = "While executing a scalar, got error formatting integer";
+                    ctx->err.message = "sprintf failed";
+                    goto error;
+                }
+                free(event->data.scalar.value);
+                event->data.scalar.value = (yaml_char_t *)strndup(buf, len);
+                free(buf);
+                event->data.scalar.length = len;
+                event->data.scalar.style = YAML_LITERAL_SCALAR_STYLE;
                 printf("LUA INTEGER: %lld\n", lua_tointeger(ctx->lua, 1));
             } else {
                 printf("LUA FLOAT: %f\n", lua_tonumber(ctx->lua, 1));
