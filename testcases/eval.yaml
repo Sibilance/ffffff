@@ -2,13 +2,26 @@
 ! >
   "hello"
 ---
-"hello"
+hello
 
 ---
 ! >
   "hello" .. " " .. "world"
 ---
-"hello world"
+hello world
+
+---
+! |
+  [[
+  multi
+  line
+  string
+  ]]
+---
+|
+  multi
+  line
+  string
 
 ---
 ! >
@@ -44,9 +57,9 @@ false
 
 ---
 ! >
-  "\u{1F602}"
+  "\u{231B}"
 ---
-😂
+⌛
 
 ---
 !testcases 

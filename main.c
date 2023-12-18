@@ -68,6 +68,28 @@ int handler(void *data, yaml_event_t *event, yl_error_t *err)
     return 1;
 }
 
+int emitter_handler(void *data, yaml_event_t *event, yl_error_t *err)
+{
+    // handler(data, event, err);
+    yaml_emitter_t *emitter = data;
+    if (!yaml_emitter_emit(emitter, event))
+        goto error;
+
+    // Mark the event as consumed to prevent double free.
+    *event = (yaml_event_t){0};
+    return 1;
+
+error:
+    // Mark the event as consumed to prevent double free.
+    *event = (yaml_event_t){0};
+    err->type = (yl_error_type_t)emitter->error;
+    err->line = emitter->line;
+    err->column = emitter->column;
+    err->context = "While emitting YAML, encountered error";
+    err->message = emitter->problem;
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     struct arguments args = {
@@ -101,6 +123,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Error initializing emitter!\n");
         goto error;
     }
+    yaml_emitter_set_unicode(&emitter, true);
+    yaml_emitter_set_encoding(&emitter, YAML_UTF8_ENCODING);
     yaml_emitter_set_output_file(&emitter, args.output);
 
     ctx.lua = luaL_newstate();
@@ -110,7 +134,8 @@ int main(int argc, char *argv[])
     luaopen_utf8(ctx.lua);
     luaopen_math(ctx.lua);
 
-    ctx.handler = handler;
+    ctx.handler = emitter_handler;
+    ctx.data = &emitter;
     if (!yl_execute_stream(&ctx)) {
         fprintf(stderr, "Error executing stream!\n");
         fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
