@@ -249,14 +249,12 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             int len;
             if (lua_isinteger(ctx->lua, 1)) {
                 len = sprintf(buf, "%lld", lua_tointeger(ctx->lua, 1));
-                fprintf(stderr, "LUA INTEGER: %lld\n", lua_tointeger(ctx->lua, 1));
             } else {
                 len = sprintf(buf, "%.17g", lua_tonumber(ctx->lua, 1));
                 if (strchr(buf, '.') == NULL && strchr(buf, 'e') == NULL) {
                     strcpy(buf + len, ".0");
                     len += 2;
                 }
-                fprintf(stderr, "LUA FLOAT: %#.17g\n", lua_tonumber(ctx->lua, 1));
             }
             if (len < 0) {
                 free(buf);
@@ -278,7 +276,6 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             event->data.scalar.value = (yaml_char_t *)strdup(lua_toboolean(ctx->lua, 1) ? "true" : "false");
             event->data.scalar.length = strlen((char *)event->data.scalar.value);
             event->data.scalar.style = YAML_PLAIN_SCALAR_STYLE;
-            fprintf(stderr, "LUA BOOL: %s\n", lua_toboolean(ctx->lua, 1) ? "true" : "false");
             break;
         case LUA_TSTRING:
             free(event->data.scalar.value);
@@ -286,17 +283,14 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             event->data.scalar.value = (yaml_char_t *)strndup(lua_string, event->data.scalar.length);
             if (!strchr(lua_string, '\n'))
                 event->data.scalar.style = YAML_ANY_SCALAR_STYLE;
-            fprintf(stderr, "LUA STRING: %s\n", lua_tostring(ctx->lua, 1));
             break;
         case LUA_TTABLE:
-            fprintf(stderr, "LUA TABLE: TBD\n");
             break;
         case LUA_TNIL:
             free(event->data.scalar.value);
             event->data.scalar.value = (yaml_char_t *)strdup("~");
             event->data.scalar.length = 1;
             event->data.scalar.style = YAML_PLAIN_SCALAR_STYLE;
-            fprintf(stderr, "LUA NIL\n");
             break;
         default:
             ctx->err.type = YL_TYPE_ERROR;

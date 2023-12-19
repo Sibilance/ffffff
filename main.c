@@ -15,10 +15,12 @@ static char args_doc[] = "[FILENAME]...";
 static struct argp_option options[] = {
     {"in", 'i', "FILE", 0, "Input file to read from."},
     {"out", 'o', "FILE", 0, "Output file to write to."},
+    {"debug", 'd', 0, 0, "Instead of generating YAML, output debug information"},
     {0}};
 
 struct arguments {
     FILE *input, *output;
+    bool debug;
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
@@ -35,6 +37,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
             arguments->output = fopen(arg, "wb");
         }
         break;
+    case 'd':
+        arguments->debug = true;
+        break;
     default:
         return ARGP_ERR_UNKNOWN;
     }
@@ -43,10 +48,37 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
-int handler(void *data, yaml_event_t *event, yl_error_t *err)
+int debug_handler(void *data, yaml_event_t *event, yl_error_t *err)
 {
+    lua_State *L = (lua_State *)data;
     yaml_scalar_style_t style;
     fprintf(stderr, "%zu:%zu: %s\n", event->start_mark.line + 1, event->start_mark.column + 1, yl_event_name(event->type));
+    if (lua_gettop(L)) {
+        int type = lua_type(L, 1);
+        switch (type) {
+        case LUA_TNUMBER:
+            if (lua_isinteger(L, 1))
+                fprintf(stderr, "  LUA INTEGER: %lld\n", lua_tointeger(L, 1));
+            else
+                fprintf(stderr, "  LUA FLOAT: %#.17g\n", lua_tonumber(L, 1));
+            break;
+        case LUA_TBOOLEAN:
+            fprintf(stderr, "  LUA BOOL: %s\n", lua_toboolean(L, 1) ? "true" : "false");
+            break;
+        case LUA_TSTRING:
+            fprintf(stderr, "  LUA STRING: %s\n", lua_tostring(L, 1));
+            break;
+        case LUA_TTABLE:
+            fprintf(stderr, "  LUA TABLE\n");
+            break;
+        case LUA_TNIL:
+            fprintf(stderr, "  LUA NIL\n");
+            break;
+        default:
+            fprintf(stderr, "  LUA UNEXPECTED TYPE: %s\n", lua_typename(L, type));
+        }
+        lua_settop(L, 0); // Clear the stack.
+    }
     switch (event->type) {
     case YAML_SCALAR_EVENT:
         style = event->data.scalar.style;
@@ -70,7 +102,7 @@ int handler(void *data, yaml_event_t *event, yl_error_t *err)
 
 int emitter_handler(void *data, yaml_event_t *event, yl_error_t *err)
 {
-    // handler(data, event, err);
+    // debug_handler(data, event, err);
     yaml_emitter_t *emitter = data;
     if (!yaml_emitter_emit(emitter, event))
         goto error;
@@ -95,6 +127,7 @@ int main(int argc, char *argv[])
     struct arguments args = {
         stdin,
         stdout,
+        false,
     };
 
     if (argp_parse(&argp, argc, argv, 0, 0, &args)) {
@@ -134,8 +167,14 @@ int main(int argc, char *argv[])
     luaopen_utf8(ctx.lua);
     luaopen_math(ctx.lua);
 
-    ctx.handler = emitter_handler;
-    ctx.data = &emitter;
+    if (args.debug) {
+        ctx.handler = debug_handler;
+        ctx.data = ctx.lua;
+    } else {
+        ctx.handler = emitter_handler;
+        ctx.data = &emitter;
+    }
+
     if (!yl_execute_stream(&ctx)) {
         fprintf(stderr, "Error executing stream!\n");
         fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
