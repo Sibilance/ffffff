@@ -45,6 +45,7 @@ static int execute_lua(lua_State *L, const char *buf)
 static int execute_lua_function(lua_State *L, const char *fnname)
 {
     int nargs = lua_gettop(L);
+    // TODO: evaluate this as an expression instead of using lua_getglobal
     int type = lua_getglobal(L, fnname);
 
     if (type != LUA_TFUNCTION) {
@@ -255,6 +256,8 @@ error:
 int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_scalar_style_t style = event->data.scalar.style;
+    // TODO: for quoted style, we'll want to treat the value as a string
+    // rather than evaluating it or passing it back to the handler
     if (style == YAML_DOUBLE_QUOTED_SCALAR_STYLE ||
         style == YAML_SINGLE_QUOTED_SCALAR_STYLE ||
         !event->data.scalar.tag ||
@@ -301,6 +304,8 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         status = execute_lua_function(ctx->lua, (char *)event->data.scalar.tag + 1);
     }
 
+    // TODO: factor this out into a generic producer of values, since this
+    // will be needed for other types of function calls, not just scalars
     if (status == LUA_OK) {
         int type = lua_type(ctx->lua, 1);
         switch (type) {
@@ -346,6 +351,8 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             const char *lua_string = lua_tolstring(ctx->lua, 1, &length);
             event->data.scalar.length = length;
             event->data.scalar.value = (yaml_char_t *)strndup(lua_string, length);
+            // TODO: select output style intelligently based on content (e.g. quote things
+            // that look like integers or floats, use blocks if there are newlines)
             if (!strchr(lua_string, '\n'))
                 event->data.scalar.style = YAML_ANY_SCALAR_STYLE;
             break;
