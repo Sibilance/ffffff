@@ -1,3 +1,5 @@
+#include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "lauxlib.h"
@@ -30,6 +32,35 @@ static int execute_lua(lua_State *L, const char *buf)
     lua_remove(L, 2); // Remove retline.
     if (status == LUA_OK)
         status = lua_pcall(L, 0, 1, 1);
+
+    lua_remove(L, 1); // Remove the error_handler.
+    return status;
+}
+
+/*
+** Execute a function in the Lua interpreter.
+** Returns one of LUA_OK, LUA_ERRRUN, LUA_ERRMEM, or LUA_ERRERR.
+** On return, leaves any return value or error message on the Lua stack.
+*/
+static int execute_lua_function(lua_State *L, const char *fnname)
+{
+    int nargs = lua_gettop(L);
+    int type = lua_getglobal(L, fnname);
+
+    if (type != LUA_TFUNCTION) {
+        // Clear the stack and return an error message.
+        lua_settop(L, 0);
+        lua_pushfstring(L, "expected `%s` to be a function, but instead got %s", fnname,
+                        lua_typename(L, type));
+        return LUA_ERRRUN;
+    }
+
+    lua_insert(L, 1); // Move the function below its argument(s).
+
+    lua_pushcfunction(L, lua_error_handler);
+    lua_insert(L, 1); // Move the error handler to the bottom.
+
+    int status = lua_pcall(L, 1, nargs, 1);
 
     lua_remove(L, 1); // Remove the error_handler.
     return status;
@@ -227,7 +258,8 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     if (style == YAML_DOUBLE_QUOTED_SCALAR_STYLE ||
         style == YAML_SINGLE_QUOTED_SCALAR_STYLE ||
         !event->data.scalar.tag ||
-        strcmp((char *)event->data.scalar.tag, "!") != 0) {
+        event->data.scalar.tag[0] != '!' ||
+        event->data.scalar.tag[1] == '!') {
 
         free(event->data.scalar.tag);
         event->data.scalar.tag = NULL;
@@ -240,7 +272,34 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         return 1;
     }
 
-    int status = execute_lua(ctx->lua, (char *)event->data.scalar.value);
+    int status;
+    if (strcmp((char *)event->data.scalar.tag, "!") == 0) {
+        status = execute_lua(ctx->lua, (char *)event->data.scalar.value);
+    } else {
+        lua_settop(ctx->lua, 0); // Clear the stack.
+        if (event->data.scalar.style == YAML_PLAIN_SCALAR_STYLE) {
+            char *end;
+            lua_Integer intvalue;
+            lua_Number doublevalue;
+            char *value = (char *)event->data.scalar.value;
+            size_t length = event->data.scalar.length;
+
+            if (length == 0 || (length == 1 && value[0] == '~') || (length == 4 && strcmp(value, "null") == 0)) {
+                lua_pushnil(ctx->lua);
+            } else if (length == 4 && strcmp(value, "true") == 0) {
+                lua_pushboolean(ctx->lua, true);
+            } else if (length == 5 && strcmp(value, "false") == 0) {
+                lua_pushboolean(ctx->lua, false);
+            } else if (intvalue = strtoll(value, &end, 0), value + length == end) {
+                lua_pushinteger(ctx->lua, intvalue);
+            } else if (doublevalue = strtod(value, &end), value + length == end) {
+                lua_pushnumber(ctx->lua, doublevalue);
+            } else {
+                lua_pushlstring(ctx->lua, value, length);
+            }
+        }
+        status = execute_lua_function(ctx->lua, (char *)event->data.scalar.tag + 1);
+    }
 
     if (status == LUA_OK) {
         int type = lua_type(ctx->lua, 1);
@@ -283,8 +342,10 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             break;
         case LUA_TSTRING:
             free(event->data.scalar.value);
-            const char *lua_string = lua_tolstring(ctx->lua, 1, &event->data.scalar.length);
-            event->data.scalar.value = (yaml_char_t *)strndup(lua_string, event->data.scalar.length);
+            size_t length;
+            const char *lua_string = lua_tolstring(ctx->lua, 1, &length);
+            event->data.scalar.length = length;
+            event->data.scalar.value = (yaml_char_t *)strndup(lua_string, length);
             if (!strchr(lua_string, '\n'))
                 event->data.scalar.style = YAML_ANY_SCALAR_STYLE;
             break;

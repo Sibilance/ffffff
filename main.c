@@ -161,11 +161,29 @@ int main(int argc, char *argv[])
     yaml_emitter_set_output_file(&emitter, args.output);
 
     ctx.lua = luaL_newstate();
-    luaopen_base(ctx.lua);
-    luaopen_table(ctx.lua);
-    luaopen_string(ctx.lua);
-    luaopen_utf8(ctx.lua);
-    luaopen_math(ctx.lua);
+    if (ctx.lua == NULL) {
+        fprintf(stderr, "Error initializing lua!\n");
+        goto error;
+    }
+
+    // Load only safe libraries.
+    luaL_requiref(ctx.lua, LUA_GNAME, luaopen_base, true);
+    luaL_requiref(ctx.lua, LUA_TABLIBNAME, luaopen_table, true);
+    luaL_requiref(ctx.lua, LUA_STRLIBNAME, luaopen_string, true);
+    luaL_requiref(ctx.lua, LUA_MATHLIBNAME, luaopen_math, true);
+    luaL_requiref(ctx.lua, LUA_UTF8LIBNAME, luaopen_utf8, true);
+    lua_settop(ctx.lua, 0);
+    lua_pushglobaltable(ctx.lua);
+    // Remove unsafe functions from base library.
+    lua_pushnil(ctx.lua);
+    lua_setfield(ctx.lua, 1, "dofile");
+    lua_pushnil(ctx.lua);
+    lua_setfield(ctx.lua, 1, "load");
+    lua_pushnil(ctx.lua);
+    lua_setfield(ctx.lua, 1, "loadfile");
+    lua_pushnil(ctx.lua);
+    lua_setfield(ctx.lua, 1, "require");
+    lua_settop(ctx.lua, 0);
 
     if (args.debug) {
         ctx.handler = debug_handler;

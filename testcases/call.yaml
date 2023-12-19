@@ -1,0 +1,9 @@
+---
+!type 3.14
+---
+number
+
+---
+!type "hello"
+---
+string
