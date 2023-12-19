@@ -4,6 +4,10 @@
 
 #include "executor.h"
 
+// -2^63 is 20 characters, plus NULL = 21.
+// Also plenty for 17 digit precision floats.
+#define NUMBUFSIZE 32
+
 static int lua_error_handler(lua_State *L)
 {
     const char *msg = lua_tostring(L, 1);
@@ -245,12 +249,12 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             // -2^63 is 20 characters, plus NULL.
             // Also plenty for 17 digit precision floats.
             // We trim it down to the actual size after formatting.
-            char *buf = malloc(32);
+            char *buf = malloc(NUMBUFSIZE);
             int len;
             if (lua_isinteger(ctx->lua, 1)) {
-                len = sprintf(buf, "%lld", lua_tointeger(ctx->lua, 1));
+                len = snprintf(buf, NUMBUFSIZE, "%lld", lua_tointeger(ctx->lua, 1));
             } else {
-                len = sprintf(buf, "%.17g", lua_tonumber(ctx->lua, 1));
+                len = snprintf(buf, NUMBUFSIZE, "%.17g", lua_tonumber(ctx->lua, 1));
                 if (strchr(buf, '.') == NULL && strchr(buf, 'e') == NULL) {
                     strcpy(buf + len, ".0");
                     len += 2;
