@@ -55,8 +55,11 @@ static int execute_lua_function(lua_State *L, const char *fnname, int nargs)
         return LUA_ERRMEM;
     }
 
-    // TODO: evaluate this as an expression instead of using lua_getglobal
-    int type = lua_getglobal(L, fnname);
+    int status = execute_lua(L, fnname);
+    if (status != LUA_OK)
+        return status;
+
+    int type = lua_type(L, -1);
 
     if (type != LUA_TFUNCTION) {
         // Clear the stack and return an error message.
@@ -71,7 +74,7 @@ static int execute_lua_function(lua_State *L, const char *fnname, int nargs)
     lua_pushcfunction(L, lua_error_handler);
     lua_insert(L, base + 1); // Move the error handler to the bottom.
 
-    int status = lua_pcall(L, nargs, 1, base + 1);
+    status = lua_pcall(L, nargs, 1, base + 1);
 
     lua_remove(L, base + 1); // Remove the error_handler.
     return status;
@@ -266,11 +269,7 @@ error:
 int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_scalar_style_t style = event->data.scalar.style;
-    // TODO: for quoted style, we'll want to treat the value as a string
-    // rather than evaluating it or passing it back to the handler
-    if (style == YAML_DOUBLE_QUOTED_SCALAR_STYLE ||
-        style == YAML_SINGLE_QUOTED_SCALAR_STYLE ||
-        !event->data.scalar.tag ||
+    if (!event->data.scalar.tag ||
         event->data.scalar.tag[0] != '!' ||
         event->data.scalar.tag[1] == '!') {
 
@@ -286,13 +285,18 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     }
 
     lua_settop(ctx->lua, 0); // Clear the stack.
-    int status;
-    if (strcmp((char *)event->data.scalar.tag, "!") == 0) {
-        status = execute_lua(ctx->lua, (char *)event->data.scalar.value);
+    int status = LUA_OK;
+    char *tag = (char *)event->data.scalar.tag;
+    char *value = (char *)event->data.scalar.value;
+    size_t length = event->data.scalar.length;
+    if (strcmp(tag, "!") == 0) {
+        if (style != YAML_DOUBLE_QUOTED_SCALAR_STYLE &&
+            style != YAML_SINGLE_QUOTED_SCALAR_STYLE)
+            status = execute_lua(ctx->lua, value);
+        else
+            lua_pushlstring(ctx->lua, value, length);
     } else {
-        char *value = (char *)event->data.scalar.value;
-        size_t length = event->data.scalar.length;
-        if (event->data.scalar.style == YAML_PLAIN_SCALAR_STYLE) {
+        if (style == YAML_PLAIN_SCALAR_STYLE) {
             char *end;
             lua_Integer intvalue;
             lua_Number doublevalue;
