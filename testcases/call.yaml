@@ -4,6 +4,7 @@
 number
 
 ---
-!type "hello"
+!type >
+  hello
 ---
 string

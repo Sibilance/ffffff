@@ -24,16 +24,20 @@ static int lua_error_handler(lua_State *L)
 */
 static int execute_lua(lua_State *L, const char *buf)
 {
-    lua_settop(L, 0); // Clear the stack.
+    if (!lua_checkstack(L, 3)) {
+        return LUA_ERRMEM;
+    }
+
+    int base = lua_gettop(L);
     lua_pushcfunction(L, lua_error_handler);
 
-    const char *retline = lua_pushfstring(L, "return (%s);", buf);
+    const char *retline = lua_pushfstring(L, "return %s;", buf);
     int status = luaL_loadbufferx(L, retline, strlen(retline), buf, "t");
-    lua_remove(L, 2); // Remove retline.
+    lua_remove(L, base + 2); // Remove retline.
     if (status == LUA_OK)
-        status = lua_pcall(L, 0, 1, 1);
+        status = lua_pcall(L, 0, 1, base + 1);
 
-    lua_remove(L, 1); // Remove the error_handler.
+    lua_remove(L, base + 1); // Remove the error_handler.
     return status;
 }
 
@@ -42,28 +46,34 @@ static int execute_lua(lua_State *L, const char *buf)
 ** Returns one of LUA_OK, LUA_ERRRUN, LUA_ERRMEM, or LUA_ERRERR.
 ** On return, leaves any return value or error message on the Lua stack.
 */
-static int execute_lua_function(lua_State *L, const char *fnname)
+static int execute_lua_function(lua_State *L, const char *fnname, int nargs)
 {
-    int nargs = lua_gettop(L);
+    int base = lua_gettop(L) - nargs;
+
+    if (!lua_checkstack(L, 3)) {
+        lua_settop(L, base);
+        return LUA_ERRMEM;
+    }
+
     // TODO: evaluate this as an expression instead of using lua_getglobal
     int type = lua_getglobal(L, fnname);
 
     if (type != LUA_TFUNCTION) {
         // Clear the stack and return an error message.
-        lua_settop(L, 0);
+        lua_settop(L, base);
         lua_pushfstring(L, "expected `%s` to be a function, but instead got %s", fnname,
                         lua_typename(L, type));
         return LUA_ERRRUN;
     }
 
-    lua_insert(L, 1); // Move the function below its argument(s).
+    lua_insert(L, base + 1); // Move the function below its argument(s).
 
     lua_pushcfunction(L, lua_error_handler);
-    lua_insert(L, 1); // Move the error handler to the bottom.
+    lua_insert(L, base + 1); // Move the error handler to the bottom.
 
-    int status = lua_pcall(L, 1, nargs, 1);
+    int status = lua_pcall(L, nargs, 1, base + 1);
 
-    lua_remove(L, 1); // Remove the error_handler.
+    lua_remove(L, base + 1); // Remove the error_handler.
     return status;
 }
 
@@ -275,17 +285,17 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         return 1;
     }
 
+    lua_settop(ctx->lua, 0); // Clear the stack.
     int status;
     if (strcmp((char *)event->data.scalar.tag, "!") == 0) {
         status = execute_lua(ctx->lua, (char *)event->data.scalar.value);
     } else {
-        lua_settop(ctx->lua, 0); // Clear the stack.
+        char *value = (char *)event->data.scalar.value;
+        size_t length = event->data.scalar.length;
         if (event->data.scalar.style == YAML_PLAIN_SCALAR_STYLE) {
             char *end;
             lua_Integer intvalue;
             lua_Number doublevalue;
-            char *value = (char *)event->data.scalar.value;
-            size_t length = event->data.scalar.length;
 
             if (length == 0 || (length == 1 && value[0] == '~') || (length == 4 && strcmp(value, "null") == 0)) {
                 lua_pushnil(ctx->lua);
@@ -300,8 +310,10 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
             } else {
                 lua_pushlstring(ctx->lua, value, length);
             }
+        } else {
+            lua_pushlstring(ctx->lua, value, length);
         }
-        status = execute_lua_function(ctx->lua, (char *)event->data.scalar.tag + 1);
+        status = execute_lua_function(ctx->lua, (char *)event->data.scalar.tag + 1, 1);
     }
 
     // TODO: factor this out into a generic producer of values, since this
