@@ -7,7 +7,7 @@ YL_LDLIBS = -llua -lyaml -largp
 .PHONY: all
 all: main.out
 
-main.out: error.o executor.o main.o parser.o
+main.out: error.o executor.o main.o parser.o producer.o
 	$(CC) $(ALL_CFLAGS) $^ $(YL_LDFLAGS) $(YL_LDLIBS) -o main.out
 
 error.o: libyaml/install

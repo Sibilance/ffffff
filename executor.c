@@ -7,10 +7,6 @@
 #include "executor.h"
 #include "producer.h"
 
-// -2^63 is 20 characters, plus NULL = 21.
-// Also plenty for 17 digit precision floats.
-#define NUMBUFSIZE 32
-
 static int lua_error_handler(lua_State *L)
 {
     const char *msg = lua_tostring(L, 1);
@@ -321,71 +317,9 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         status = execute_lua_function(ctx->lua, (char *)event->data.scalar.tag + 1, 1);
     }
 
-    // TODO: factor this out into a generic producer of values, since this
-    // will be needed for other types of function calls, not just scalars
     if (status == LUA_OK) {
-        int type = lua_type(ctx->lua, 1);
-        switch (type) {
-        case LUA_TNUMBER: {
-            char *buf = malloc(NUMBUFSIZE);
-            int len;
-            if (lua_isinteger(ctx->lua, 1)) {
-                len = snprintf(buf, NUMBUFSIZE, "%lld", lua_tointeger(ctx->lua, 1));
-            } else {
-                len = snprintf(buf, NUMBUFSIZE, "%.17g", lua_tonumber(ctx->lua, 1));
-                if (strchr(buf, '.') == NULL && strchr(buf, 'e') == NULL) {
-                    strcpy(buf + len, ".0");
-                    len += 2;
-                }
-            }
-            if (len < 0) {
-                free(buf);
-                ctx->err.type = YL_RUNTIME_ERROR;
-                ctx->err.line = event->start_mark.line;
-                ctx->err.column = event->start_mark.column;
-                ctx->err.context = "While executing a scalar, got error formatting integer";
-                ctx->err.message = "sprintf failed";
-                goto error;
-            }
-            free(event->data.scalar.value);
-            event->data.scalar.value = (yaml_char_t *)strndup(buf, len);
-            event->data.scalar.length = len;
-            free(buf);
-            event->data.scalar.style = YAML_PLAIN_SCALAR_STYLE;
-        } break;
-        case LUA_TBOOLEAN:
-            free(event->data.scalar.value);
-            event->data.scalar.value = (yaml_char_t *)strdup(lua_toboolean(ctx->lua, 1) ? "true" : "false");
-            event->data.scalar.length = strlen((char *)event->data.scalar.value);
-            event->data.scalar.style = YAML_PLAIN_SCALAR_STYLE;
-            break;
-        case LUA_TSTRING:
-            free(event->data.scalar.value);
-            size_t length;
-            const char *lua_string = lua_tolstring(ctx->lua, 1, &length);
-            event->data.scalar.length = length;
-            event->data.scalar.value = (yaml_char_t *)strndup(lua_string, length);
-            // TODO: select output style intelligently based on content (e.g. quote things
-            // that look like integers or floats, use blocks if there are newlines)
-            if (!strchr(lua_string, '\n'))
-                event->data.scalar.style = YAML_ANY_SCALAR_STYLE;
-            break;
-        case LUA_TTABLE:
-            break;
-        case LUA_TNIL:
-            free(event->data.scalar.value);
-            event->data.scalar.value = (yaml_char_t *)strdup("~");
-            event->data.scalar.length = 1;
-            event->data.scalar.style = YAML_PLAIN_SCALAR_STYLE;
-            break;
-        default:
-            ctx->err.type = YL_TYPE_ERROR;
-            ctx->err.line = event->start_mark.line;
-            ctx->err.column = event->start_mark.column;
-            ctx->err.context = "While executing a scalar, got unexpected return type";
-            ctx->err.message = lua_typename(ctx->lua, type);
+        if (!yl_produce_scalar(ctx, event))
             goto error;
-        }
     } else {
         ctx->err.type = YL_EXECUTION_ERROR;
         switch (status) {
