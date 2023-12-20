@@ -5,6 +5,7 @@
 #include "lauxlib.h"
 
 #include "executor.h"
+#include "producer.h"
 
 // -2^63 is 20 characters, plus NULL = 21.
 // Also plenty for 17 digit precision floats.
@@ -326,9 +327,6 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         int type = lua_type(ctx->lua, 1);
         switch (type) {
         case LUA_TNUMBER: {
-            // -2^63 is 20 characters, plus NULL.
-            // Also plenty for 17 digit precision floats.
-            // We trim it down to the actual size after formatting.
             char *buf = malloc(NUMBUFSIZE);
             int len;
             if (lua_isinteger(ctx->lua, 1)) {

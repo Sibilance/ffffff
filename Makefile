@@ -16,12 +16,14 @@ main.o: lua/install libyaml/install
 parser.o: libyaml/install
 
 error.c: error.h
-executor.c: executor.h
+executor.c: executor.h producer.h
 main.c: executor.h parser.h
 parser.c: parser.h
+producer.c: producer.h
 
 parser.h: error.h
 executor.h: parser.h
+producer.h: executor.h
 
 %.o: %.c 
 	$(CC) $(ALL_CFLAGS) -c $<
