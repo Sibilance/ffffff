@@ -7,6 +7,7 @@
 
 #include "executor.h"
 #include "parser.h"
+#include "test.h"
 
 const char *argp_program_version = "yl 0.0.0";
 const char *argp_program_bug_address = "https://github.com/Sibilance/ffffff/issues";
@@ -27,6 +28,7 @@ static struct argp_option options[] = {
 struct arguments {
     FILE *input, *output;
     bool debug;
+    bool test;
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
@@ -45,6 +47,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         break;
     case 'd':
         arguments->debug = true;
+        break;
+    case 't':
+        arguments->test = true;
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -134,6 +139,7 @@ int main(int argc, char *argv[])
         stdin,
         stdout,
         false,
+        false,
     };
 
     if (argp_parse(&argp, argc, argv, 0, 0, &args)) {
@@ -199,7 +205,18 @@ int main(int argc, char *argv[])
         ctx.data = &emitter;
     }
 
-    if (!yl_execute_stream(&ctx)) {
+    if (args.test) {
+        if (!yl_test_stream(&ctx)) {
+            fprintf(stderr, "Error testing stream!\n");
+            fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
+                    ctx.err.line,
+                    ctx.err.column,
+                    yl_error_name(ctx.err.type),
+                    ctx.err.context,
+                    ctx.err.message);
+            goto error;
+        }
+    } else if (!yl_execute_stream(&ctx)) {
         fprintf(stderr, "Error executing stream!\n");
         fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
                 ctx.err.line,
