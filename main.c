@@ -9,13 +9,19 @@
 #include "parser.h"
 
 const char *argp_program_version = "yl 0.0.0";
-const char *argp_program_bug_address = "<taliastocks@gmail.com>";
+const char *argp_program_bug_address = "https://github.com/Sibilance/ffffff/issues";
 static char doc[] = "Render a YL template.";
 static char args_doc[] = "[FILENAME]...";
 static struct argp_option options[] = {
     {"in", 'i', "FILE", 0, "Input file to read from."},
     {"out", 'o', "FILE", 0, "Output file to write to."},
     {"debug", 'd', 0, 0, "Instead of generating YAML, output debug information"},
+    {"test", 't', 0, 0, "Run the input as a test case. Test cases alternate input and expected output "
+                        "documents in the stream. Test cases can be parameterized by preceeding them "
+                        "with a document containing a sequence of mappings annotated with !testcases. "
+                        "Keys from these mappings are set as global variables in each test case. The "
+                        "number of expected output documents must equal the length of the !testcases "
+                        "sequence."},
     {0}};
 
 struct arguments {
