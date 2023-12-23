@@ -84,7 +84,7 @@ int yl_execute_stream(yl_execution_context_t *ctx)
     bool done = false;
     while (!done) {
         if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
-            return 0;
+            goto error;
 
         switch (next_event.type) {
         case YAML_STREAM_START_EVENT:
