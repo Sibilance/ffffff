@@ -76,6 +76,10 @@ int yl_produce_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         value = lua_tolstring(ctx->lua, -1, &length);
         if (strchr(value, '\n'))
             style = YAML_LITERAL_SCALAR_STYLE;
+        else if (length == 4 && strcmp(value, "true") == 0)
+            style = YAML_DOUBLE_QUOTED_SCALAR_STYLE;
+        else if (length == 5 && strcmp(value, "false") == 0)
+            style = YAML_DOUBLE_QUOTED_SCALAR_STYLE;
         else if (length > 100)
             style = YAML_FOLDED_SCALAR_STYLE;
         else if (length > 0 && isdigit(value[0]))

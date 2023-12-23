@@ -1,0 +1,45 @@
+---
+! "hello\nworld"
+---
+|-
+  hello
+  world
+
+---
+! "hello\nworld\n"
+---
+|
+  hello
+  world
+
+---
+! " hello\nworld "
+---
+" hello\nworld "
+
+---
+! " hello\n world"
+---
+|2-
+   hello
+   world
+
+---
+! "hello\n\0world"
+---
+"hello\n\0world"
+
+---
+! "true"
+---
+"true"
+
+---
+! "false"
+---
+"false"
+
+---
+! "0.5"
+---
+"0.5"
