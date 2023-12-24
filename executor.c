@@ -129,7 +129,7 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
     bool done = false;
     while (!done) {
         if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
-            return 0;
+            goto error;
 
         switch (next_event.type) {
         case YAML_SCALAR_EVENT:
@@ -177,7 +177,7 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
     bool done = false;
     while (!done) {
         if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
-            return 0;
+            goto error;
 
         switch (next_event.type) {
         case YAML_SCALAR_EVENT:
@@ -225,7 +225,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
     bool done = false;
     while (!done) {
         if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
-            return 0;
+            goto error;
 
         switch (next_event.type) {
         case YAML_SCALAR_EVENT:
