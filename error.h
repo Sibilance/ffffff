@@ -20,6 +20,7 @@ typedef enum _yl_error_type_e {
     YL_RUNTIME_ERROR,
     YL_ERROR_HANDLER_ERROR,
     YL_TYPE_ERROR,
+    YL_TEST_ERROR,
 } yl_error_type_t;
 
 typedef struct _yl_error_s {

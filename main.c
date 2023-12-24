@@ -63,6 +63,7 @@ static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 int debug_handler(lua_State *L, yaml_event_t *event, yl_error_t *err)
 {
     (void)err; // Unused.
+
     yaml_scalar_style_t style;
     fprintf(stderr, "%zu:%zu: %s\n", event->start_mark.line + 1, event->start_mark.column + 1, yl_event_name(event->type));
     if (lua_gettop(L)) {
