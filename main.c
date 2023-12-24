@@ -59,9 +59,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
-int debug_handler(void *data, yaml_event_t *event, yl_error_t *err)
+int debug_handler(lua_State *L, yaml_event_t *event, yl_error_t *err)
 {
-    lua_State *L = (lua_State *)data;
     yaml_scalar_style_t style;
     fprintf(stderr, "%zu:%zu: %s\n", event->start_mark.line + 1, event->start_mark.column + 1, yl_event_name(event->type));
     if (lua_gettop(L)) {
@@ -111,10 +110,8 @@ int debug_handler(void *data, yaml_event_t *event, yl_error_t *err)
     return 1;
 }
 
-int emitter_handler(void *data, yaml_event_t *event, yl_error_t *err)
+int emitter_handler(yaml_emitter_t *emitter, yaml_event_t *event, yl_error_t *err)
 {
-    // debug_handler(data, event, err);
-    yaml_emitter_t *emitter = data;
     if (!yaml_emitter_emit(emitter, event))
         goto error;
 
@@ -156,13 +153,17 @@ int main(int argc, char *argv[])
     }
 
     yl_execution_context_t ctx = {0};
+    yaml_parser_t parser = {0};
     yaml_emitter_t emitter = {0};
 
-    if (!yaml_parser_initialize(&ctx.parser)) {
+    if (!yaml_parser_initialize(&parser)) {
         fprintf(stderr, "Error initializing parser!\n");
         goto error;
     }
-    yaml_parser_set_input_file(&ctx.parser, args.input);
+    yaml_parser_set_input_file(&parser, args.input);
+
+    ctx.producer = (yl_event_producer_t *)yl_parser_parse;
+    ctx.producer_data = &parser;
 
     if (!yaml_emitter_initialize(&emitter)) {
         fprintf(stderr, "Error initializing emitter!\n");
@@ -198,11 +199,11 @@ int main(int argc, char *argv[])
     lua_settop(ctx.lua, 0);
 
     if (args.debug) {
-        ctx.handler = debug_handler;
-        ctx.data = ctx.lua;
+        ctx.handler = (yl_event_handler_t *)debug_handler;
+        ctx.handler_data = ctx.lua;
     } else {
-        ctx.handler = emitter_handler;
-        ctx.data = &emitter;
+        ctx.handler = (yl_event_handler_t *)emitter_handler;
+        ctx.handler_data = &emitter;
     }
 
     if (args.test) {
@@ -227,14 +228,14 @@ int main(int argc, char *argv[])
         goto error;
     }
 
-    yaml_parser_delete(&ctx.parser);
+    yaml_parser_delete(&parser);
     yaml_emitter_delete(&emitter);
     lua_close(ctx.lua);
 
     return 0;
 
 error:
-    yaml_parser_delete(&ctx.parser);
+    yaml_parser_delete(&parser);
     yaml_emitter_delete(&emitter);
     if (ctx.lua)
         lua_close(ctx.lua);

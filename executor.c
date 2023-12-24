@@ -83,12 +83,12 @@ int yl_execute_stream(yl_execution_context_t *ctx)
 
     bool done = false;
     while (!done) {
-        if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
+        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
             goto error;
 
         switch (next_event.type) {
         case YAML_STREAM_START_EVENT:
-            if (!ctx->handler(ctx->data, &next_event, &ctx->err))
+            if (!ctx->handler(ctx->handler_data, &next_event, &ctx->err))
                 goto error;
             break;
         case YAML_DOCUMENT_START_EVENT:
@@ -96,7 +96,7 @@ int yl_execute_stream(yl_execution_context_t *ctx)
                 goto error;
             break;
         case YAML_STREAM_END_EVENT:
-            if (!ctx->handler(ctx->data, &next_event, &ctx->err))
+            if (!ctx->handler(ctx->handler_data, &next_event, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -123,12 +123,12 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->handler(ctx->data, event, &ctx->err))
+    if (!ctx->handler(ctx->handler_data, event, &ctx->err))
         goto error;
 
     bool done = false;
     while (!done) {
-        if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
+        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
             return 0;
 
         switch (next_event.type) {
@@ -145,7 +145,7 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_DOCUMENT_END_EVENT:
-            if (!ctx->handler(ctx->data, &next_event, &ctx->err))
+            if (!ctx->handler(ctx->handler_data, &next_event, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -171,12 +171,12 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->handler(ctx->data, event, &ctx->err))
+    if (!ctx->handler(ctx->handler_data, event, &ctx->err))
         goto error;
 
     bool done = false;
     while (!done) {
-        if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
+        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
             return 0;
 
         switch (next_event.type) {
@@ -193,7 +193,7 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_SEQUENCE_END_EVENT:
-            if (!ctx->handler(ctx->data, &next_event, &ctx->err))
+            if (!ctx->handler(ctx->handler_data, &next_event, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -219,12 +219,12 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->handler(ctx->data, event, &ctx->err))
+    if (!ctx->handler(ctx->handler_data, event, &ctx->err))
         goto error;
 
     bool done = false;
     while (!done) {
-        if (!yl_parser_parse(&ctx->parser, &next_event, &ctx->err))
+        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
             return 0;
 
         switch (next_event.type) {
@@ -241,7 +241,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_MAPPING_END_EVENT:
-            if (!ctx->handler(ctx->data, &next_event, &ctx->err))
+            if (!ctx->handler(ctx->handler_data, &next_event, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -275,7 +275,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         event->data.scalar.plain_implicit = 1;
         event->data.scalar.quoted_implicit = 1;
 
-        if (!ctx->handler(ctx->data, event, &ctx->err))
+        if (!ctx->handler(ctx->handler_data, event, &ctx->err))
             goto error;
 
         return 1;
@@ -351,7 +351,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     event->data.scalar.plain_implicit = 1;
     event->data.scalar.quoted_implicit = 1;
 
-    if (!ctx->handler(ctx->data, event, &ctx->err))
+    if (!ctx->handler(ctx->handler_data, event, &ctx->err))
         goto error;
 
     return 1;
