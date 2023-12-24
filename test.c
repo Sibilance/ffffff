@@ -19,7 +19,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
 
         switch (next_event.type) {
         case YAML_STREAM_START_EVENT:
-            if (!ctx->handler(ctx->handler_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
                 goto error;
             break;
         case YAML_DOCUMENT_START_EVENT:
@@ -27,7 +27,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
                 goto error;
             break;
         case YAML_STREAM_END_EVENT:
-            if (!ctx->handler(ctx->handler_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
                 goto error;
             done = true;
             break;

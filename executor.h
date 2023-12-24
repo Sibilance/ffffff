@@ -19,10 +19,10 @@
 typedef int yl_event_producer_t(void *data, yaml_event_t *event, yl_error_t *err);
 
 /**
- * The prototype of an event handler.
+ * The prototype of an event consumer.
  *
- * The event handler is called when the executor has finished processing or producing
- * an event. The handler can write the event to an output file, or accumulate it into
+ * The event consumer is called when the executor has finished processing or producing
+ * an event. The consumer can write the event to an output file, or accumulate it into
  * some sort of object for further processing.
  *
  * @param[in,out]   data        A pointer to an application data.
@@ -32,14 +32,14 @@ typedef int yl_event_producer_t(void *data, yaml_event_t *event, yl_error_t *err
  * @returns On success, the handler should return @c 1. If the handler failed,
  * the returned value should be @c 0.
  */
-typedef int yl_event_handler_t(void *data, yaml_event_t *event, yl_error_t *err);
+typedef int yl_event_consumer_t(void *data, yaml_event_t *event, yl_error_t *err);
 
 typedef struct _yl_execution_context_s {
     yl_event_producer_t *producer;
     void *producer_data;
     lua_State *lua;
-    yl_event_handler_t *handler;
-    void *handler_data;
+    yl_event_consumer_t *consumer;
+    void *consumer_data;
     yl_error_t err;
 } yl_execution_context_t;
 

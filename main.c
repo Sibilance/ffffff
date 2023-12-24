@@ -199,11 +199,11 @@ int main(int argc, char *argv[])
     lua_settop(ctx.lua, 0);
 
     if (args.debug) {
-        ctx.handler = (yl_event_handler_t *)debug_handler;
-        ctx.handler_data = ctx.lua;
+        ctx.consumer = (yl_event_consumer_t *)debug_handler;
+        ctx.consumer_data = ctx.lua;
     } else {
-        ctx.handler = (yl_event_handler_t *)emitter_handler;
-        ctx.handler_data = &emitter;
+        ctx.consumer = (yl_event_consumer_t *)emitter_handler;
+        ctx.consumer_data = &emitter;
     }
 
     if (args.test) {
