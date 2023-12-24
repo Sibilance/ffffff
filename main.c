@@ -14,15 +14,16 @@ const char *argp_program_bug_address = "https://github.com/Sibilance/ffffff/issu
 static char doc[] = "Render a YL template.";
 static char args_doc[] = "[FILENAME]...";
 static struct argp_option options[] = {
-    {"in", 'i', "FILE", 0, "Input file to read from."},
-    {"out", 'o', "FILE", 0, "Output file to write to."},
-    {"debug", 'd', 0, 0, "Instead of generating YAML, output debug information"},
+    {"in", 'i', "FILE", 0, "Input file to read from.", 0},
+    {"out", 'o', "FILE", 0, "Output file to write to.", 0},
+    {"debug", 'd', 0, 0, "Instead of generating YAML, output debug information", 0},
     {"test", 't', 0, 0, "Run the input as a test case. Test cases alternate input and expected output "
                         "documents in the stream. Test cases can be parameterized by preceeding them "
                         "with a document containing a sequence of mappings annotated with !testcases. "
                         "Keys from these mappings are set as global variables in each test case. The "
                         "number of expected output documents must equal the length of the !testcases "
-                        "sequence."},
+                        "sequence.",
+     0},
     {0}};
 
 struct arguments {
@@ -61,6 +62,7 @@ static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
 int debug_handler(lua_State *L, yaml_event_t *event, yl_error_t *err)
 {
+    (void)err; // Unused.
     yaml_scalar_style_t style;
     fprintf(stderr, "%zu:%zu: %s\n", event->start_mark.line + 1, event->start_mark.column + 1, yl_event_name(event->type));
     if (lua_gettop(L)) {
