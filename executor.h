@@ -2,6 +2,7 @@
 
 #include "lua.h"
 
+#include "event.h"
 #include "parser.h"
 
 /**

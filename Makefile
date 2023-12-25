@@ -7,15 +7,17 @@ YL_LDLIBS = -llua -lyaml -largp
 .PHONY: all
 all: main.out
 
-main.out: error.o executor.o main.o parser.o producer.o test.o
+main.out: error.o event.o executor.o main.o parser.o producer.o test.o
 	$(CC) $(ALL_CFLAGS) $^ $(YL_LDFLAGS) $(YL_LDLIBS) -o main.out
 
 error.o: libyaml/install
+event.o: libyaml/install
 executor.o: lua/install libyaml/install
 main.o: lua/install libyaml/install
 parser.o: libyaml/install
 
 error.c: error.h
+event.c: event.h
 executor.c: executor.h producer.h
 main.c: executor.h parser.h test.h
 parser.c: parser.h
@@ -23,9 +25,10 @@ producer.c: producer.h
 test.c: test.h
 
 parser.h: error.h
-executor.h: parser.h
+event.h: error.h
+executor.h: event.h parser.h
 producer.h: executor.h
-test.h: executor.h parser.h
+test.h: event.h executor.h parser.h
 
 %.o: %.c 
 	$(CC) $(ALL_CFLAGS) -c $<

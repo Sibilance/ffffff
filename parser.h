@@ -9,7 +9,3 @@
 #include "error.h"
 
 int yl_parser_parse(yaml_parser_t *parser, yaml_event_t *event, yl_error_t *err);
-
-int yl_copy_event(yaml_event_t *original, yaml_event_t *copy);
-
-const char *yl_event_name(yaml_event_type_t event_type);
