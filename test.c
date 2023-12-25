@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h>
 
 #include "yaml.h"
 
@@ -13,6 +14,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
     bool recording_actual = true;
     yl_event_record_t actual_events = {0};
     yl_event_record_t expected_events = {0};
+    char *expected_rendering = NULL, *actual_rendering = NULL;
 
     // TODO: Currently just copied from yl_execute_stream().
     // The challenge here is how to implement the !testcases use-case.
@@ -38,6 +40,9 @@ int yl_test_stream(yl_execution_context_t *ctx)
             ctx->consumer = (yl_event_producer_t *)yl_record_event;
             ctx->consumer_data = recording_actual ? &actual_events : &expected_events;
 
+            size_t line = next_event.start_mark.line;
+            size_t column = next_event.start_mark.column;
+
             if (!yl_execute_document(ctx, &next_event))
                 goto error;
 
@@ -45,18 +50,37 @@ int yl_test_stream(yl_execution_context_t *ctx)
             ctx->consumer_data = saved_ctx.consumer_data;
 
             if (recording_actual) {
+                recording_actual = false;
+            } else {
+                actual_rendering = yl_render_event_record(&actual_events, &ctx->err);
+                if (actual_rendering == NULL)
+                    goto error;
+
+                expected_rendering = yl_render_event_record(&expected_events, &ctx->err);
+                if (expected_rendering == NULL)
+                    goto error;
+
+                // Consume both the sets of events.
                 for (size_t i = 0; i < actual_events.length; ++i) {
                     if (!ctx->consumer(ctx->consumer_data, &actual_events.events[i], &ctx->err))
                         goto error;
                 }
-                recording_actual = false;
-            } else {
                 for (size_t i = 0; i < expected_events.length; ++i) {
                     if (!ctx->consumer(ctx->consumer_data, &expected_events.events[i], &ctx->err))
                         goto error;
                 }
-                // TODO: compare outputs
 
+                if (strcmp(actual_rendering, expected_rendering) != 0) {
+                    ctx->err.type = YL_ASSERTION_ERROR;
+                    ctx->err.line = line;
+                    ctx->err.column = column;
+                    ctx->err.context = "While comparing rendered documents";
+                    ctx->err.message = "actual document differs from expected document";
+                    goto error;
+                }
+
+                free(actual_rendering);
+                free(expected_rendering);
                 yl_event_record_delete(&actual_events);
                 yl_event_record_delete(&expected_events);
                 recording_actual = true;
@@ -85,6 +109,10 @@ int yl_test_stream(yl_execution_context_t *ctx)
     return 1;
 
 error:
+    if (actual_rendering != NULL)
+        free(actual_rendering);
+    if (expected_rendering != NULL)
+        free(expected_rendering);
     yl_event_record_delete(&actual_events);
     yl_event_record_delete(&expected_events);
     yaml_event_delete(&next_event);

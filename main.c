@@ -213,8 +213,8 @@ int main(int argc, char *argv[])
         if (!yl_test_stream(&ctx)) {
             fprintf(stderr, "Error testing stream!\n");
             fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
-                    ctx.err.line,
-                    ctx.err.column,
+                    ctx.err.line + 1,
+                    ctx.err.column + 1,
                     yl_error_name(ctx.err.type),
                     ctx.err.context,
                     ctx.err.message);
@@ -223,8 +223,8 @@ int main(int argc, char *argv[])
     } else if (!yl_execute_stream(&ctx)) {
         fprintf(stderr, "Error executing stream!\n");
         fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
-                ctx.err.line,
-                ctx.err.column,
+                ctx.err.line + 1,
+                ctx.err.column + 1,
                 yl_error_name(ctx.err.type),
                 ctx.err.context,
                 ctx.err.message);

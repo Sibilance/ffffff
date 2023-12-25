@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "event.h"
 
 const char *yl_event_names[] = {
@@ -111,10 +113,111 @@ int yl_replay_event(yl_event_record_t *event_record, yaml_event_t *event, yl_err
         err->column = original_event->start_mark.column;
         err->context = "While replaying an event, ran into problem";
         err->message = "memory error";
+        goto error;
     }
 
     return 1;
 
 error:
     return 0;
+}
+
+typedef struct _stringbuilder_s {
+    size_t capacity;
+    size_t length;
+    char *contents;
+} stringbuilder_t;
+
+static int stringbuilder_add(stringbuilder_t *builder, char *buffer, size_t size)
+{
+    if (builder->length + size >= builder->capacity) {
+        size_t new_capacity = builder->capacity << 1;
+        if (new_capacity == 0)
+            new_capacity = 1;
+        while (new_capacity < builder->length + size)
+            new_capacity <<= 1;
+
+        char *resized_contents = realloc(builder->contents, new_capacity);
+        if (resized_contents == NULL)
+            return 0;
+
+        builder->contents = resized_contents;
+        builder->capacity = new_capacity;
+    }
+
+    memcpy(&builder->contents[builder->length], buffer, size);
+    builder->length += size;
+
+    return 1;
+}
+
+static void stringbuilder_delete(stringbuilder_t *builder)
+{
+    if (builder->contents)
+        free(builder->contents);
+
+    *builder = (stringbuilder_t){0};
+}
+
+char *yl_render_event_record(yl_event_record_t *event_record, yl_error_t *err)
+{
+    yaml_emitter_t emitter = {0};
+    yaml_event_t event = {0};
+    stringbuilder_t stringbuilder = {0};
+    char *output = NULL;
+
+    if (!yaml_emitter_initialize(&emitter)) {
+        err->type = YL_EMITTER_ERROR;
+        err->line = 0;
+        err->column = 0;
+        err->context = "Error rendering event record";
+        err->message = "failed to initialize emitter";
+        goto error;
+    }
+
+    yaml_emitter_set_output(&emitter, (yaml_write_handler_t *)stringbuilder_add, &stringbuilder);
+
+    yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
+    if (!yaml_emitter_emit(&emitter, &event))
+        goto error;
+
+    while (event_record->index < event_record->length) {
+        if (!yl_replay_event(event_record, &event, err))
+            goto error;
+
+        if (!yaml_emitter_emit(&emitter, &event)) {
+            err->type = YL_EMITTER_ERROR;
+            err->line = event.start_mark.line;
+            err->column = event.start_mark.column;
+            err->context = "Error rendering event record";
+            err->message = "failed to emit event";
+            goto error;
+        }
+    }
+
+    yaml_stream_end_event_initialize(&event);
+    if (!yaml_emitter_emit(&emitter, &event))
+        goto error;
+
+    output = strndup(stringbuilder.contents, stringbuilder.length);
+
+    if (output == NULL) {
+        err->type = YL_MEMORY_ERROR;
+        err->line = 0;
+        err->column = 0;
+        err->context = "Error rendering event record";
+        err->message = "failed to allocate output string";
+        goto error;
+    }
+
+    stringbuilder_delete(&stringbuilder);
+    yaml_emitter_delete(&emitter);
+    return output;
+
+error:
+    if (output != NULL)
+        free(output);
+    stringbuilder_delete(&stringbuilder);
+    yaml_emitter_delete(&emitter);
+    return NULL;
 }
