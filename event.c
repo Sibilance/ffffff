@@ -165,11 +165,16 @@ char *yl_render_event_record(yl_event_record_t *event_record, yl_error_t *err)
     yaml_event_t event = {0};
     stringbuilder_t stringbuilder = {0};
     char *output = NULL;
+    size_t line = 0, column = 0;
+    if (event_record->length > event_record->index) {
+        line = event_record->events[event_record->index].start_mark.line;
+        column = event_record->events[event_record->index].start_mark.column;
+    }
 
     if (!yaml_emitter_initialize(&emitter)) {
         err->type = YL_EMITTER_ERROR;
-        err->line = 0;
-        err->column = 0;
+        err->line = line;
+        err->column = column;
         err->context = "Error rendering event record";
         err->message = "failed to initialize emitter";
         goto error;
@@ -203,8 +208,8 @@ char *yl_render_event_record(yl_event_record_t *event_record, yl_error_t *err)
 
     if (output == NULL) {
         err->type = YL_MEMORY_ERROR;
-        err->line = 0;
-        err->column = 0;
+        err->line = line;
+        err->column = column;
         err->context = "Error rendering event record";
         err->message = "failed to allocate output string";
         goto error;
