@@ -365,11 +365,6 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         goto error;
     }
 
-    free(event->data.scalar.tag);
-    event->data.scalar.tag = NULL;
-    event->data.scalar.plain_implicit = 1;
-    event->data.scalar.quoted_implicit = 1;
-
     if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
         goto error;
 
