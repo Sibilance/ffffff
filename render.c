@@ -10,24 +10,7 @@ int yl_render_scalar(lua_State *L, yaml_event_t *event, yl_error_t *err)
 {
     size_t line = event->start_mark.line;
     size_t column = event->start_mark.column;
-    char *anchor = NULL;
-
-    switch (event->type) {
-    case YAML_SCALAR_EVENT:
-        if (event->data.scalar.anchor != NULL)
-            anchor = strdup((char *)event->data.scalar.anchor);
-        break;
-    case YAML_SEQUENCE_START_EVENT:
-        if (event->data.sequence_start.anchor)
-            anchor = strdup((char *)event->data.sequence_start.anchor);
-        break;
-    case YAML_MAPPING_START_EVENT:
-        if (event->data.mapping_start.anchor)
-            anchor = strdup((char *)event->data.mapping_start.anchor);
-        break;
-    default:
-        break;
-    }
+    char *anchor = yl_copy_anchor(event);
 
     yaml_event_delete(event);
 
@@ -125,5 +108,24 @@ error:
     if (anchor != NULL)
         free(anchor);
 
+    return 0;
+}
+
+int yl_render_sequence(lua_State *L, yaml_event_t *event, yl_event_record_t *event_record, yl_error_t *err)
+{
+    size_t line = event->start_mark.line;
+    size_t column = event->start_mark.column;
+    char *anchor = yl_copy_anchor(event);
+
+    yaml_event_delete(event);
+
+    // TODO: render lua list into yaml sequence, output in event_record.
+    (void)line;
+    (void)column;
+    (void)anchor;
+    (void)L;
+    (void)event;
+    (void)event_record;
+    (void)err;
     return 0;
 }

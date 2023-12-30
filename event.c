@@ -231,3 +231,27 @@ error:
     yaml_emitter_delete(&emitter);
     return NULL;
 }
+
+char *yl_copy_anchor(yaml_event_t *event)
+{
+    char *anchor = NULL;
+
+    switch (event->type) {
+    case YAML_SCALAR_EVENT:
+        if (event->data.scalar.anchor != NULL)
+            anchor = strdup((char *)event->data.scalar.anchor);
+        break;
+    case YAML_SEQUENCE_START_EVENT:
+        if (event->data.sequence_start.anchor)
+            anchor = strdup((char *)event->data.sequence_start.anchor);
+        break;
+    case YAML_MAPPING_START_EVENT:
+        if (event->data.mapping_start.anchor)
+            anchor = strdup((char *)event->data.mapping_start.anchor);
+        break;
+    default:
+        break;
+    }
+
+    return anchor;
+}
