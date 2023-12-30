@@ -5,7 +5,6 @@
 #include "lauxlib.h"
 
 #include "executor.h"
-#include "render.h"
 
 static int lua_error_handler(lua_State *L)
 {
@@ -97,7 +96,7 @@ int yl_execute_stream(yl_execution_context_t *ctx)
 
         switch (next_event.type) {
         case YAML_STREAM_START_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
                 goto error;
             break;
         case YAML_DOCUMENT_START_EVENT:
@@ -105,7 +104,7 @@ int yl_execute_stream(yl_execution_context_t *ctx)
                 goto error;
             break;
         case YAML_STREAM_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -132,7 +131,7 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
+    if (!ctx->consumer(ctx->consumer_data, event, NULL, &ctx->err))
         goto error;
 
     bool done = false;
@@ -154,7 +153,7 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_DOCUMENT_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -180,7 +179,7 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
+    if (!ctx->consumer(ctx->consumer_data, event, NULL, &ctx->err))
         goto error;
 
     bool done = false;
@@ -202,7 +201,7 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_SEQUENCE_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -228,7 +227,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
+    if (!ctx->consumer(ctx->consumer_data, event, NULL, &ctx->err))
         goto error;
 
     bool done = false;
@@ -250,7 +249,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_MAPPING_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -285,7 +284,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         event->data.scalar.plain_implicit = 1;
         event->data.scalar.quoted_implicit = 1;
 
-        if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
+        if (!ctx->consumer(ctx->consumer_data, event, NULL, &ctx->err))
             goto error;
 
         return 1;
@@ -336,10 +335,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         status = execute_lua_function(ctx->lua, (char *)event->data.scalar.tag + 1, 1);
     }
 
-    if (status == LUA_OK) {
-        if (!yl_render_scalar(ctx->lua, event, &ctx->err))
-            goto error;
-    } else {
+    if (status != LUA_OK) {
         ctx->err.type = YL_EXECUTION_ERROR;
         switch (status) {
         case LUA_ERRSYNTAX:
@@ -365,7 +361,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         goto error;
     }
 
-    if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
+    if (!ctx->consumer(ctx->consumer_data, event, ctx->lua, &ctx->err))
         goto error;
 
     lua_settop(ctx->lua, base);

@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "event.h"
+#include "render.h"
 
 const char *yl_event_names[] = {
     "NO_EVENT",
@@ -59,7 +60,7 @@ const char *yl_event_name(yaml_event_type_t event_type)
     return yl_event_names[event_type];
 }
 
-int yl_record_event(yl_event_record_t *event_record, yaml_event_t *event, yl_error_t *err)
+int yl_record_event(yl_event_record_t *event_record, yaml_event_t *event, lua_State *L, yl_error_t *err)
 {
     if (event_record->length == event_record->capacity) {
         size_t new_capacity = event_record->capacity << 1;
@@ -79,6 +80,10 @@ int yl_record_event(yl_event_record_t *event_record, yaml_event_t *event, yl_err
         event_record->events = resized_events;
         event_record->capacity = new_capacity;
     }
+
+    if (L != NULL)
+        if (!yl_render_scalar(L, event, err))
+            goto error;
 
     event_record->events[event_record->length++] = *event;
     *event = (yaml_event_t){0}; // Mark the event as consumed to prevent its contents from being freed.

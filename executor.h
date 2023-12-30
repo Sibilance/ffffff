@@ -28,12 +28,14 @@ typedef int yl_event_producer_t(void *data, yaml_event_t *event, yl_error_t *err
  *
  * @param[in,out]   data        A pointer to an application data.
  * @param[in]       event       The event emitted.
+ * @param[in]       L           A pointer to the Lua state, if it contains data to
+ *                              augment the event.
  * @param[out]      err         Error details.
  *
  * @returns On success, the handler should return @c 1. If the handler failed,
  * the returned value should be @c 0.
  */
-typedef int yl_event_consumer_t(void *data, yaml_event_t *event, yl_error_t *err);
+typedef int yl_event_consumer_t(void *data, yaml_event_t *event, lua_State *L, yl_error_t *err);
 
 typedef struct _yl_execution_context_s {
     yl_event_producer_t *producer;

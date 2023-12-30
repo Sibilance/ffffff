@@ -31,13 +31,13 @@ int yl_test_stream(yl_execution_context_t *ctx)
 
         switch (next_event.type) {
         case YAML_STREAM_START_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
                 goto error;
             break;
         case YAML_DOCUMENT_START_EVENT: {
             saved_ctx = *ctx;
 
-            ctx->consumer = (yl_event_producer_t *)yl_record_event;
+            ctx->consumer = (yl_event_consumer_t *)yl_record_event;
             ctx->consumer_data = recording_actual ? &actual_events : &expected_events;
 
             size_t line = next_event.start_mark.line;
@@ -62,11 +62,11 @@ int yl_test_stream(yl_execution_context_t *ctx)
 
                 // Consume both the sets of events.
                 for (size_t i = 0; i < actual_events.length; ++i) {
-                    if (!ctx->consumer(ctx->consumer_data, &actual_events.events[i], &ctx->err))
+                    if (!ctx->consumer(ctx->consumer_data, &actual_events.events[i], NULL, &ctx->err))
                         goto error;
                 }
                 for (size_t i = 0; i < expected_events.length; ++i) {
-                    if (!ctx->consumer(ctx->consumer_data, &expected_events.events[i], &ctx->err))
+                    if (!ctx->consumer(ctx->consumer_data, &expected_events.events[i], NULL, &ctx->err))
                         goto error;
                 }
 
@@ -89,7 +89,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
             }
         } break;
         case YAML_STREAM_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, &ctx->err))
+            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;

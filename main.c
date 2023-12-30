@@ -7,6 +7,7 @@
 #include "environment.h"
 #include "executor.h"
 #include "parser.h"
+#include "render.h"
 #include "test.h"
 
 const char *argp_program_version = "yl 0.0.0";
@@ -60,9 +61,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
-int debug_handler(lua_State *L, yaml_event_t *event, yl_error_t *err)
+int debug_handler(lua_State *L, yaml_event_t *event, lua_State *L2, yl_error_t *err)
 {
     (void)err; // Unused.
+    (void)L2;  // Unused;
 
     yaml_scalar_style_t style;
     fprintf(stderr, "%zu:%zu: %s\n", event->start_mark.line + 1, event->start_mark.column + 1, yl_event_name(event->type));
@@ -113,8 +115,12 @@ int debug_handler(lua_State *L, yaml_event_t *event, yl_error_t *err)
     return 1;
 }
 
-int emitter_handler(yaml_emitter_t *emitter, yaml_event_t *event, yl_error_t *err)
+int emitter_handler(yaml_emitter_t *emitter, yaml_event_t *event, lua_State *L, yl_error_t *err)
 {
+    if (L != NULL)
+        if (!yl_render_scalar(L, event, err))
+            goto error;
+
     if (!yaml_emitter_emit(emitter, event))
         goto error;
 

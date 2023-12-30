@@ -12,17 +12,17 @@ main.out: environment.o error.o event.o executor.o main.o parser.o render.o test
 
 environment.o: lua/install
 error.o: libyaml/install
-event.o: libyaml/install
+event.o: lua/install libyaml/install
 executor.o: lua/install libyaml/install
 main.o: lua/install libyaml/install
 parser.o: libyaml/install
 render.o: lua/install libyaml/install
 
 environment.c: environment.h
-error.c: error.h
+error.c: error.h render.h
 event.c: event.h
-executor.c: executor.h render.h
-main.c: environment.h executor.h parser.h test.h
+executor.c: executor.h
+main.c: environment.h executor.h parser.h render.h test.h
 parser.c: parser.h
 render.c: render.h
 test.c: test.h
