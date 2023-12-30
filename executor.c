@@ -5,7 +5,7 @@
 #include "lauxlib.h"
 
 #include "executor.h"
-#include "producer.h"
+#include "render.h"
 
 static int lua_error_handler(lua_State *L)
 {
@@ -337,7 +337,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     }
 
     if (status == LUA_OK) {
-        if (!yl_produce_scalar(ctx, event))
+        if (!yl_render_scalar(ctx->lua, event, &ctx->err))
             goto error;
     } else {
         ctx->err.type = YL_EXECUTION_ERROR;
@@ -377,6 +377,6 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     return 1;
 
 error:
-    lua_settop(ctx->lua, base);
+    // Don't reset the stack on error, as it may contain an error message.
     return 0;
 }
