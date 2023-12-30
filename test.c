@@ -80,7 +80,9 @@ int yl_test_stream(yl_execution_context_t *ctx)
                 }
 
                 free(actual_rendering);
+                actual_rendering = NULL;
                 free(expected_rendering);
+                expected_rendering = NULL;
                 yl_event_record_delete(&actual_events);
                 yl_event_record_delete(&expected_events);
                 recording_actual = true;
