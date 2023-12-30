@@ -10,34 +10,12 @@ all: main.out
 main.out: environment.o error.o event.o executor.o main.o parser.o render.o test.o
 	$(CC) $(ALL_CFLAGS) $^ $(YL_LDFLAGS) $(YL_LDLIBS) -o main.out
 
-environment.o: lua/install
-error.o: libyaml/install
-event.o: lua/install libyaml/install
-executor.o: lua/install libyaml/install
-main.o: lua/install libyaml/install
-parser.o: libyaml/install
-render.o: lua/install libyaml/install
-
-environment.c: environment.h
-error.c: error.h render.h
-event.c: event.h
-executor.c: executor.h
-main.c: environment.h executor.h parser.h render.h test.h
-parser.c: parser.h
-render.c: render.h
-test.c: test.h
-
-parser.h: error.h
-event.h: error.h
-executor.h: event.h parser.h
-render.h: executor.h
-test.h: event.h executor.h parser.h
-
 %.o: %.c 
 	$(CC) $(ALL_CFLAGS) -c $<
 
-%.h %.c:  # Propagate file save timestamps onto dependees.
-	touch $@
+deps.mk: *.c *.h
+	./deps.sh >deps.mk
+include deps.mk
 
 lua:
 	mkdir -p lua
