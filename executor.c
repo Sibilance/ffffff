@@ -131,6 +131,7 @@ error:
 int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
+    int base = lua_gettop(ctx->lua);
 
     if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
         goto error;
@@ -167,11 +168,13 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
             goto error;
         }
 
+        lua_settop(ctx->lua, base);
         yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
+    lua_settop(ctx->lua, base);
     yaml_event_delete(&next_event);
     return 0;
 }
@@ -179,6 +182,7 @@ error:
 int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
+    int base = lua_gettop(ctx->lua);
 
     if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
         goto error;
@@ -215,11 +219,13 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
             goto error;
         }
 
+        lua_settop(ctx->lua, base);
         yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
+    lua_settop(ctx->lua, base);
     yaml_event_delete(&next_event);
     return 0;
 }
@@ -227,6 +233,7 @@ error:
 int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
+    int base = lua_gettop(ctx->lua);
 
     if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
         goto error;
@@ -263,11 +270,13 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
             goto error;
         }
 
+        lua_settop(ctx->lua, base);
         yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
+    lua_settop(ctx->lua, base);
     yaml_event_delete(&next_event);
     return 0;
 }
@@ -290,7 +299,16 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         return 1;
     }
 
-    lua_settop(ctx->lua, 0); // Clear the stack.
+    // Ensure room for the scalar value.
+    if (!lua_checkstack(ctx->lua, 1)) {
+        ctx->err.type = YL_MEMORY_ERROR;
+        ctx->err.line = event->start_mark.line;
+        ctx->err.column = event->start_mark.column;
+        ctx->err.context = "While executing a scalar, encountered an error";
+        ctx->err.message = "could not expand Lua stack space";
+        goto error;
+    }
+
     int status = LUA_OK;
     char *tag = (char *)event->data.scalar.tag;
     char *value = (char *)event->data.scalar.value;
