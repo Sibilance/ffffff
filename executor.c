@@ -131,7 +131,6 @@ error:
 int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
-    int base = lua_gettop(ctx->lua);
 
     if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
         goto error;
@@ -168,13 +167,11 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
             goto error;
         }
 
-        lua_settop(ctx->lua, base);
         yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
-    lua_settop(ctx->lua, base);
     yaml_event_delete(&next_event);
     return 0;
 }
@@ -182,7 +179,6 @@ error:
 int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
-    int base = lua_gettop(ctx->lua);
 
     if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
         goto error;
@@ -219,13 +215,11 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
             goto error;
         }
 
-        lua_settop(ctx->lua, base);
         yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
-    lua_settop(ctx->lua, base);
     yaml_event_delete(&next_event);
     return 0;
 }
@@ -233,7 +227,6 @@ error:
 int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
-    int base = lua_gettop(ctx->lua);
 
     if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
         goto error;
@@ -270,19 +263,18 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
             goto error;
         }
 
-        lua_settop(ctx->lua, base);
         yaml_event_delete(&next_event);
     }
     return 1;
 
 error:
-    lua_settop(ctx->lua, base);
     yaml_event_delete(&next_event);
     return 0;
 }
 
 int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
 {
+    int base = lua_gettop(ctx->lua);
     yaml_scalar_style_t style = event->data.scalar.style;
     if (!event->data.scalar.tag ||
         event->data.scalar.tag[0] != '!' ||
@@ -381,8 +373,10 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     if (!ctx->consumer(ctx->consumer_data, event, &ctx->err))
         goto error;
 
+    lua_settop(ctx->lua, base);
     return 1;
 
 error:
+    lua_settop(ctx->lua, base);
     return 0;
 }
