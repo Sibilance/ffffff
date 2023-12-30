@@ -1,10 +1,10 @@
 #include <argp.h>
+#include <stdbool.h>
 #include <stdio.h>
 
-#include "lauxlib.h"
-#include "lualib.h"
 #include "yaml.h"
 
+#include "environment.h"
 #include "executor.h"
 #include "parser.h"
 #include "test.h"
@@ -182,24 +182,7 @@ int main(int argc, char *argv[])
         goto error;
     }
 
-    // Load only safe libraries.
-    luaL_requiref(ctx.lua, LUA_GNAME, luaopen_base, true);
-    luaL_requiref(ctx.lua, LUA_TABLIBNAME, luaopen_table, true);
-    luaL_requiref(ctx.lua, LUA_STRLIBNAME, luaopen_string, true);
-    luaL_requiref(ctx.lua, LUA_MATHLIBNAME, luaopen_math, true);
-    luaL_requiref(ctx.lua, LUA_UTF8LIBNAME, luaopen_utf8, true);
-    lua_settop(ctx.lua, 0);
-    lua_pushglobaltable(ctx.lua);
-    // Remove unsafe functions from base library.
-    lua_pushnil(ctx.lua);
-    lua_setfield(ctx.lua, 1, "dofile");
-    lua_pushnil(ctx.lua);
-    lua_setfield(ctx.lua, 1, "load");
-    lua_pushnil(ctx.lua);
-    lua_setfield(ctx.lua, 1, "loadfile");
-    lua_pushnil(ctx.lua);
-    lua_setfield(ctx.lua, 1, "require");
-    lua_settop(ctx.lua, 0);
+    yl_load_safe_libraries(ctx.lua);
 
     if (args.debug) {
         ctx.consumer = (yl_event_consumer_t *)debug_handler;

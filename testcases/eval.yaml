@@ -61,6 +61,17 @@ false
 ---
 ⌛
 
+---  # Test dangerous functions are absent.
+- ! dofile
+- ! load
+- ! loadfile
+- ! require
+---
+- ~
+- ~
+- ~
+- ~
+
 ---
 !testcases 
 - param: 1
