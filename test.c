@@ -1,10 +1,36 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "lua.h"
 #include "yaml.h"
 
 #include "event.h"
+#include "render.h"
 #include "test.h"
+
+static int yl_record_rendered_event(yl_event_record_t *event_record, yaml_event_t *event, lua_State *L, yl_error_t *err)
+{
+    if (L != NULL) {
+        int type = lua_type(L, -1);
+        switch (type) {
+        case LUA_TTABLE:
+            if (!yl_render_sequence(L, event, event_record, err))
+                goto error;
+            break;
+        default:
+            if (!yl_render_scalar(L, event, err) || !yl_record_event(event_record, event, err))
+                goto error;
+            break;
+        }
+    } else if (!yl_record_event(event_record, event, err)) {
+        goto error;
+    }
+
+    return 1;
+
+error:
+    return 0;
+}
 
 int yl_test_stream(yl_execution_context_t *ctx)
 {
@@ -37,7 +63,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
         case YAML_DOCUMENT_START_EVENT: {
             saved_ctx = *ctx;
 
-            ctx->consumer = (yl_event_consumer_t *)yl_record_event;
+            ctx->consumer = (yl_event_consumer_t *)yl_record_rendered_event;
             ctx->consumer_data = recording_actual ? &actual_events : &expected_events;
 
             size_t line = next_event.start_mark.line;

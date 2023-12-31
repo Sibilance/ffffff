@@ -20,6 +20,7 @@ typedef enum _yl_error_type_e {
     YL_RUNTIME_ERROR,
     YL_ERROR_HANDLER_ERROR,
     YL_TYPE_ERROR,
+    YL_RENDER_ERROR,
     YL_ASSERTION_ERROR,
 } yl_error_type_t;
 

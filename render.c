@@ -1,5 +1,8 @@
 #include <ctype.h>
 
+#include "lauxlib.h"
+
+#include "event.h"
 #include "render.h"
 
 // -2^63 is 20 characters, plus NULL = 21.
@@ -81,7 +84,7 @@ int yl_render_scalar(lua_State *L, yaml_event_t *event, yl_error_t *err)
         err->type = YL_TYPE_ERROR;
         err->line = line;
         err->column = column;
-        err->context = "While executing a scalar, got unexpected return type";
+        err->context = "While rendering a scalar, got unexpected Lua type";
         err->message = lua_typename(L, type);
         goto error;
     }
@@ -92,13 +95,20 @@ int yl_render_scalar(lua_State *L, yaml_event_t *event, yl_error_t *err)
                                       (yaml_char_t *)value,
                                       length,
                                       1, 1,
-                                      style))
+                                      style)) {
+        err->type = YL_RENDER_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a scalar, got unexpected error";
+        err->message = "could not initialize scalar event";
         goto error;
+    }
 
     if (buf != NULL)
         free(buf);
     if (anchor != NULL)
         free(anchor);
+    lua_pop(L, 1); // Remove the argument from the stack.
 
     return 1;
 
@@ -107,6 +117,7 @@ error:
         free(buf);
     if (anchor != NULL)
         free(anchor);
+    lua_pop(L, 1); // Remove the argument from the stack.
 
     return 0;
 }
@@ -119,13 +130,100 @@ int yl_render_sequence(lua_State *L, yaml_event_t *event, yl_event_record_t *eve
 
     yaml_event_delete(event);
 
-    // TODO: render lua list into yaml sequence, output in event_record.
-    (void)line;
-    (void)column;
-    (void)anchor;
-    (void)L;
-    (void)event;
-    (void)event_record;
-    (void)err;
+    int type = lua_type(L, -1);
+    if (type != LUA_TTABLE) {
+        err->type = YL_TYPE_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a sequence, got unexpected Lua type";
+        err->message = lua_typename(L, type);
+        goto error;
+    }
+
+    if (!lua_checkstack(L, 10)) {
+        err->type = YL_MEMORY_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a sequence, got memory error";
+        err->message = "could not expand Lua stack";
+        goto error;
+    }
+
+    long int length = -1;
+    if (lua_getmetatable(L, -1)) {
+        // If there's a metatable, use the ordinary length operator.
+        lua_pop(L, 1); // Remove the metatable.
+        lua_len(L, -1);
+        int isnum;
+        length = lua_tointegerx(L, -1, &isnum);
+        if (!isnum) {
+            err->type = YL_TYPE_ERROR;
+            err->line = line;
+            err->column = column;
+            err->context = "While rendering a sequence, got invalid length type";
+            err->message = luaL_typename(L, -1);
+            lua_pop(L, 1); // Remove the length.
+            goto error;
+        }
+        lua_pop(L, 1); // Remove the length.
+    } else {
+        // If there's no metatable, get the "n" field if it exists,
+        // or use the raw length operator.
+        lua_getfield(L, -1, "n");
+        if (lua_isinteger(L, -1)) {
+            length = lua_tointeger(L, -1);
+        } else {
+            length = lua_rawlen(L, -2);
+        }
+        lua_pop(L, 1); // Remove the "n" field value.
+    }
+
+    if (!yaml_sequence_start_event_initialize(event, (yaml_char_t *)anchor, NULL, 1, YAML_ANY_SEQUENCE_STYLE)) {
+        err->type = YL_RENDER_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a sequence, got unexpected error";
+        err->message = "could not initialize sequence start event";
+        goto error;
+    }
+
+    if (!yl_record_event(event_record, event, err))
+        goto error;
+
+    for (long int i = 1; i <= length; ++i) {
+        int type = lua_geti(L, -1, i);
+        (void)type;
+        // TODO: infer the type and render nested sequences and mappings
+        if (!yl_render_scalar(L, event, err)) {
+            goto error;
+        }
+
+        if (!yl_record_event(event_record, event, err))
+            goto error;
+    }
+
+    if (!yaml_sequence_end_event_initialize(event)) {
+        err->type = YL_RENDER_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a sequence, got unexpected error";
+        err->message = "could not initialize sequence end event";
+        goto error;
+    }
+
+    if (!yl_record_event(event_record, event, err))
+        goto error;
+
+    if (anchor != NULL)
+        free(anchor);
+    lua_pop(L, 1); // Remove the argument from the stack.
+
+    return 1;
+
+error:
+    if (anchor != NULL)
+        free(anchor);
+    lua_pop(L, 1); // Remove the argument from the stack.
+
     return 0;
 }

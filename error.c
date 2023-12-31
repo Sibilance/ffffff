@@ -14,6 +14,7 @@ const char *yaml_error_names[] = {
     "RUNTIME_ERROR",
     "ERROR_HANDLER_ERROR",
     "TYPE_ERROR",
+    "RENDER_ERROR",
     "ASSERTION_ERROR",
 };
 
