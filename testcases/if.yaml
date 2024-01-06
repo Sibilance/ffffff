@@ -1,0 +1,40 @@
+---
+!testcases
+- param: 1
+- param: 2
+- param: 3
+---
+!if 
+param == 1: foo
+param == 2: bar
+~: baz
+---
+foo
+---
+bar
+---
+baz
+
+---
+!testcases 
+- param: true
+- param: false
+---
+!if param: "hello"
+---
+"hello"
+---
+~
+
+---
+!testcases 
+- param: true
+- param: false
+---
+- item
+- !if param: "hello"
+---
+- item
+- "hello"
+---
+- item

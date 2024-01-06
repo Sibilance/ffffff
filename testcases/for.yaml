@@ -1,0 +1,82 @@
+---
+!for i = 1, 3:
+  - !eval i
+---
+- 1
+- 2
+- 3
+
+---
+!for i = 1, 3:
+  !eval "key" .. i: !eval i
+---
+key1: 1
+key2: 2
+key3: 3
+
+---
+!testcases
+- param:
+    key1: value1
+    key2: value2
+    key3: value3
+---
+!for k, v in pairs(param):
+  !eval k: !eval v
+---
+key1: value1
+key2: value2
+key3: value3
+
+---
+!for i = 1, 3:
+  - !if i ~= 2: !eval i
+---
+- 1
+- 3
+
+---
+!for i = 1, 3:
+  !if i ~= 2:
+    - !eval i
+---
+- 1
+- 3
+
+---
+!for i = 1, 3:
+  - !eval i
+  - !if i == 2: !break
+---
+- 1
+- 2
+
+---
+!for i = 1, 3:
+  !eval "key" .. i: i
+  !if i == 2: !break
+---
+key1: 1
+key2: 2
+
+---  # Embed a for loop in a map.
+key0: value0
+!for i = 1, 2:
+  ! "key" .. i: ! "value" .. i
+key3: value3
+---
+key0: value0
+key1: value1
+key2: value2
+key3: value3
+
+---  # Embed a for loop in a list.
+- item0
+- !for i = 1, 2:
+  - ! "item" .. i
+- item3
+---
+- item0
+- item1
+- item2
+- item3

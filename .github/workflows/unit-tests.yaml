@@ -6,15 +6,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # - name: Setup Go
-      #   uses: actions/setup-go@v3
-      #   with:
-      #     go-version: '1.19.x'
+      - name: Cache library dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            libyaml/
+            lua/
+          key: "\
+            ${{ runner.os }}-\
+            ${{ hashFiles('Makefile') }}-\
+            ${{ hashFiles('.github/workflows/unit-tests.yaml') }}-\
+            ${{ github.ref == 'refs/heads/main' && github.sha || env.DATE }}"
+          restore-keys: "\
+            ${{ runner.os }}-\
+            ${{ hashFiles('Makefile') }}-\
+            ${{ hashFiles('.github/workflows/unit-tests.yaml') }}-"
 
-      # - name: Install dependencies
-      #   run: go get ./...
+      - name: Build binary
+        run: make YL_LDLIBS='-llua -lyaml -lm'
 
       - name: Run tests
-        run: go test -v ./...
+        run: ./test.sh

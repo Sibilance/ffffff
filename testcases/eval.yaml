@@ -1,0 +1,105 @@
+---
+! >
+  "hello"
+---
+hello
+
+---
+! >
+  "hello" .. " " .. "world"
+---
+hello world
+
+---
+! |
+  [[
+  multi
+  line
+  string
+  ]]
+---
+|
+  multi
+  line
+  string
+
+---
+! >
+  1 == 1
+---
+true
+
+---
+! >
+  1 == 0
+---
+false
+
+---
+! undefined_variable
+---
+~
+
+---
+! 3 + 4
+---
+7
+
+---
+! 3.0 + 4.0
+---
+7.0
+
+---
+! "7"
+---
+"7"
+
+---
+! >
+  "\u{231B}"
+---
+⌛
+
+---
+! > 
+  {1, 4, 16}
+---
+- 1
+- 4
+- 16
+
+---  # Test dangerous functions are absent.
+- ! dofile
+- ! load
+- ! loadfile
+- ! require
+---
+- ~
+- ~
+- ~
+- ~
+
+---
+!testcases 
+- param: 1
+- param: 1.0
+- param: "foo"
+---
+! param
+---
+1
+---
+1.0
+---
+"foo"
+
+---
+!testcases 
+- param: [1, 2, 3]
+---
+! param
+---
+- 1
+- 2
+- 3
