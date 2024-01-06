@@ -13,7 +13,7 @@ jobs:
           sudo apt-get install -y gnulib
 
       - name: Build binary
-        run: make YL_LDLIBS='-llua -lyaml -lmath'
+        run: make YL_LDLIBS='-llua -lyaml -lm'
 
       - name: Run tests
         run: ./test.sh
