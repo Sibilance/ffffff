@@ -8,9 +8,9 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get install -y gnulib
+      # - name: Install build dependencies
+      #   run: |
+      #     sudo apt-get install -y gnulib
 
       - name: Cache library dependencies
         uses: actions/cache@v3
