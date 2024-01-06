@@ -5,9 +5,9 @@ YL_LDFLAGS = -Llibyaml/install/lib -Llua/install/lib
 YL_LDLIBS = -llua -lyaml -lm -largp
 
 .PHONY: all
-all: main.out
+all: build/main.out
 
-main.out: build/environment.o build/error.o build/event.o build/executor.o build/main.o build/parser.o build/render.o build/test.o
+build/main.out: build/environment.o build/error.o build/event.o build/executor.o build/main.o build/parser.o build/render.o build/test.o
 	$(CC) $(ALL_CFLAGS) $^ $(YL_LDFLAGS) $(YL_LDLIBS) -o $@
 
 build/%.o: %.c
@@ -39,4 +39,4 @@ libyaml/install: libyaml/Makefile
 
 .PHONY: clean
 clean:
-	rm -rf lua libyaml build *.o *.out
+	rm -rf lua libyaml build
