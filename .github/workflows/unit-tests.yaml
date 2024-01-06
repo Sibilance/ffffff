@@ -8,9 +8,21 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get install -y gnulib
+
+      - name: Cache library dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            libyaml/
+            lua/
+          key: "\
+            ${{ runner.os }}-\
+            ${{ hashFiles('Makefile') }}-\
+            ${{ hashFiles('.github/workflows/unit-tests.yaml') }}-\
+            ${{ github.ref == 'refs/heads/main' && github.sha || env.DATE }}"
 
       - name: Build binary
         run: make YL_LDLIBS='-llua -lyaml -lm'
