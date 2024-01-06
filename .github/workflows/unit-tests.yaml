@@ -11,11 +11,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get install -y gnulib
-          sudo updatedb
-          locate argp.h
 
       - name: Build binary
-        run: make
+        run: make YL_LDLIBS='-llua -lyaml'
 
       - name: Run tests
         run: ./test.sh
