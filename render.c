@@ -73,9 +73,6 @@ int yl_render_scalar(lua_State *L, yaml_event_t *event, yl_error_t *err)
         else if (length > 1 && value[0] == '.' && isdigit(value[1]))
             style = YAML_DOUBLE_QUOTED_SCALAR_STYLE;
         break;
-    case LUA_TTABLE:
-        // TODO, it's not a scalar, whoops
-        break;
     case LUA_TNIL:
         value = "~";
         length = 1;

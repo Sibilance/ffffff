@@ -6,10 +6,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Make dependencies
-        run: make lua/install libyaml/install
+      - name: Build binary
+        run: make
 
-      # - name: Run tests
-      #   run: go test -v ./...
+      - name: Run tests
+        run: ./test.sh
