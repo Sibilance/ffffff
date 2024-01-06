@@ -25,5 +25,5 @@ function dependencies() {
 }
 
 for file in *.c; do
-    echo "${file/%.c/.o}:" $(dependencies "$file" | sort | uniq)
+    echo "build/${file/%.c/.o}:" $(dependencies "$file" | sort | uniq)
 done
