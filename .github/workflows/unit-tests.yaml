@@ -23,6 +23,10 @@ jobs:
             ${{ hashFiles('Makefile') }}-\
             ${{ hashFiles('.github/workflows/unit-tests.yaml') }}-\
             ${{ github.ref == 'refs/heads/main' && github.sha || env.DATE }}"
+          restore-keys: "\
+            ${{ runner.os }}-\
+            ${{ hashFiles('Makefile') }}-\
+            ${{ hashFiles('.github/workflows/unit-tests.yaml') }}-\
 
       - name: Build binary
         run: make YL_LDLIBS='-llua -lyaml -lm'
