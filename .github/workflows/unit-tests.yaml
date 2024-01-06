@@ -14,15 +14,7 @@ jobs:
           path: |
             libyaml/
             lua/
-          key: "\
-            ${{ runner.os }}-\
-            ${{ hashFiles('Makefile') }}-\
-            ${{ hashFiles('.github/workflows/unit-tests.yaml') }}-\
-            ${{ github.ref == 'refs/heads/main' && github.sha || env.DATE }}"
-          restore-keys: "\
-            ${{ runner.os }}-\
-            ${{ hashFiles('Makefile') }}-\
-            ${{ hashFiles('.github/workflows/unit-tests.yaml') }}-"
+          key: "library-deps-${{ hashFiles('Makefile') }}"
 
       - name: Build binary
         run: make YL_LDLIBS='-llua -lyaml -lm'
