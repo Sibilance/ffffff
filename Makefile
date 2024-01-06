@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Werror
 ALL_CFLAGS = $(CFLAGS) -Ilibyaml/install/include -Ilua/install/include
 YL_LDFLAGS = -Llibyaml/install/lib -Llua/install/lib
-YL_LDLIBS = -llua -lyaml -largp
+YL_LDLIBS = -llua -lyaml -lm -largp
 
 .PHONY: all
 all: main.out
