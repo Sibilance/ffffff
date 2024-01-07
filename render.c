@@ -383,6 +383,7 @@ int yl_render_mapping(yl_event_consumer_t *consumer, yaml_event_t *event, lua_St
     // -1: table.sort; -2: error handler; -3; table; -4: list of keys
     lua_pushvalue(L, -4); // Duplicate list of keys, it gets consumed by sort().
     // -1: list of keys; -2: table.sort; -3: error handler; -4; table; -5: list of keys
+    // TODO: custom compare function to account for comparing different types.
     int status = lua_pcall(L, 1, 0, -3);
     if (status != LUA_OK) {
         // -1: error message; -2: error handler; -3: table; -4: list of keys

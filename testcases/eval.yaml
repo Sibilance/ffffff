@@ -69,13 +69,35 @@ false
 - 4
 - 16
 
----
+---  # If n is set, use it to determine the length.
 ! >
   {n=3, 1, 2}
 ---
 - 1
 - 2
 - ~
+
+---  # If n is set, allow the first element to be nil.
+! >
+  {n=3, [2]=2, [3]=3}
+---
+- ~
+- 2
+- 3
+
+---  # If the 1 index is set, assume it is a sequence.
+! >
+  {a=1, 2, 3, 4}
+---
+- 2
+- 3
+- 4
+
+---  # An empty table is considered a list.
+! >
+  {}
+---
+[]
 
 ---
 ! >
@@ -85,6 +107,13 @@ a: 1
 b: 2
 c: 3
 d: 4
+
+---  # Map with numeric indices (aside from 1).
+! >
+  {a=1, [2]=3}
+---
+a: 1
+2: 3
 
 ---  # Test dangerous functions are absent.
 - ! dofile
