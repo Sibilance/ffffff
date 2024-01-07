@@ -4,73 +4,12 @@
 #include "lualib.h"
 
 #include "event.h"
+#include "lua_helpers.h"
 #include "render.h"
 
 // -2^63 is 20 characters, plus NULL = 21.
 // Also plenty for 17 digit precision floats.
 #define NUMBUFSIZE 32
-
-/*
-** Get the length of the table at the top of the stack.
-** Does not remove the table from the stack.
-** On return, pushes either an error message, the length, or nil to the stack.
-**/
-static yl_error_type_t get_length(lua_State *L)
-{
-    if (lua_type(L, -1) != LUA_TTABLE) {
-        lua_pushfstring(L, luaL_typename(L, -1));
-        return YL_TYPE_ERROR;
-    }
-
-    if (lua_getmetatable(L, -1)) {
-        // If there's a metatable, use it as the length operator.
-        int type = lua_getfield(L, -1, "__len");
-        lua_pop(L, 2); // Remove the function and metatable.
-        if (type == LUA_TFUNCTION) {
-            lua_len(L, -1); // Push the length onto the stack.
-
-            int isnum;
-            lua_tointegerx(L, -1, &isnum);
-            if (!isnum) {
-                lua_pushfstring(L, luaL_typename(L, -1));
-                lua_remove(L, -2); // Remove the length.
-                return YL_TYPE_ERROR;
-            }
-
-            return YL_NO_ERROR;
-        }
-
-        lua_pushnil(L); // No length, this is a mapping.
-        return YL_NO_ERROR;
-    } else {
-        // If there's no metatable, get the "n" field if it exists,
-        // or use the raw length operator.
-        lua_getfield(L, -1, "n");
-        if (lua_isinteger(L, -1)) {
-            return YL_NO_ERROR;
-        } else {
-            lua_pop(L, 1); // Remove the nil "n" field value.
-            int type = lua_rawgeti(L, -1, 1);
-            // If there is a 1st element, it's a sequence. Get the length.
-            if (type != LUA_TNIL) {
-                lua_pop(L, 1); // Remove the value from rawgeti().
-                lua_pushinteger(L, lua_rawlen(L, -1));
-                return YL_NO_ERROR;
-            }
-            // -1: nil; -2: table
-            // Assume a fully empty table is a sequence of zero length.
-            if (lua_next(L, -2) == 0) {
-                lua_pushinteger(L, 0);
-                return YL_NO_ERROR;
-            }
-            // -1: value; -2: key; -3: table
-            lua_pop(L, 2);
-        }
-    }
-
-    lua_pushnil(L); // No length; this is a mapping.
-    return YL_NO_ERROR;
-}
 
 int yl_render_event(yl_event_consumer_t *consumer, yaml_event_t *event, lua_State *L, yl_error_t *err)
 {
@@ -80,7 +19,7 @@ int yl_render_event(yl_event_consumer_t *consumer, yaml_event_t *event, lua_Stat
     if (L != NULL) {
         int type = lua_type(L, -1);
         if (type == LUA_TTABLE) {
-            yl_error_type_t errtype = get_length(L);
+            yl_error_type_t errtype = yl_lua_get_length(L, -1);
             if (errtype != YL_NO_ERROR) {
                 err->type = errtype;
                 err->line = line;
@@ -257,7 +196,7 @@ int yl_render_sequence(yl_event_consumer_t *consumer, yaml_event_t *event, lua_S
         goto error;
     }
 
-    yl_error_type_t errtype = get_length(L);
+    yl_error_type_t errtype = yl_lua_get_length(L, -1);
     if (errtype != YL_NO_ERROR) {
         err->type = errtype;
         err->line = line;
@@ -363,58 +302,16 @@ int yl_render_mapping(yl_event_consumer_t *consumer, yaml_event_t *event, lua_St
     if (!consumer->callback(consumer->data, event, NULL, err))
         goto error;
 
-    lua_newtable(L); // Add table for collecting keys.
-    lua_insert(L, -2);
-    lua_pushnil(L); // -1: nil; -2: table; -3: list of keys
-    long int i = 1;
-    while (lua_next(L, -2) != 0) {
-        // -1: value; -2: key; -3: table; -4: list of keys
-        lua_pop(L, 1);        // Pop value, we don't need it yet.
-        lua_pushvalue(L, -1); // Duplicate key, it gets consumed by rawseti().
-        // -1: key; -2: key; -3: table; -4: list of keys
-        lua_rawseti(L, -4, i++);
-        // -1: key; -2: table; -3: list of keys
-    }
-    // -1: table; -2: list of keys
-    lua_pushcfunction(L, yl_lua_error_handler);
-    luaL_requiref(L, LUA_TABLIBNAME, luaopen_table, false);
-    type = lua_getfield(L, -1, "sort");
-    lua_remove(L, -2); // Delete table module reference.
-    // -1: table.sort; -2: error handler; -3; table; -4: list of keys
-    lua_pushvalue(L, -4); // Duplicate list of keys, it gets consumed by sort().
-    // -1: list of keys; -2: table.sort; -3: error handler; -4; table; -5: list of keys
-    // TODO: custom compare function to account for comparing different types.
-    int status = lua_pcall(L, 1, 0, -3);
-    if (status != LUA_OK) {
-        // -1: error message; -2: error handler; -3: table; -4: list of keys
-        lua_remove(L, -4); // Remove list of keys.
-        lua_insert(L, -3); // Insert error message below table.
-        lua_pop(L, 1);     // Pop error handler.
-        // -1: table; -2: list of keys
-        switch (status) {
-        case LUA_ERRRUN:
-            err->type = YL_RUNTIME_ERROR;
-            break;
-        case LUA_ERRMEM:
-            err->type = YL_MEMORY_ERROR;
-            break;
-        case LUA_ERRERR:
-            err->type = YL_ERROR_HANDLER_ERROR;
-            break;
-        default:
-            err->type = YL_RUNTIME_ERROR;
-            break;
-        }
-        err->type = YL_RUNTIME_ERROR;
+    yl_error_type_t err_type = yl_lua_sort_keys(L, -1);
+    if (err_type != YL_NO_ERROR) {
+        err->type = err_type;
         err->line = line;
         err->column = column;
         err->context = "While rendering a mapping, got error sorting keys";
-        err->message = lua_tostring(L, -2);
+        err->message = lua_tostring(L, -1);
         goto error;
     }
-    // -1: error handler; -2 table; -3: list of keys (sorted)
-    lua_pop(L, 1);     // Remove the error handler.
-    lua_insert(L, -2); // Move table below list of keys.
+    // -1: list of keys (sorted); -2: table
 
     long int length = lua_rawlen(L, -1);
     for (long int i = 1; i <= length; ++i) {
