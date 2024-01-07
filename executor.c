@@ -96,7 +96,7 @@ int yl_execute_stream(yl_execution_context_t *ctx)
 
         switch (next_event.type) {
         case YAML_STREAM_START_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
+            if (!ctx->consumer.callback(ctx->consumer.data, &next_event, NULL, &ctx->err))
                 goto error;
             break;
         case YAML_DOCUMENT_START_EVENT:
@@ -104,7 +104,7 @@ int yl_execute_stream(yl_execution_context_t *ctx)
                 goto error;
             break;
         case YAML_STREAM_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
+            if (!ctx->consumer.callback(ctx->consumer.data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -131,7 +131,7 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->consumer(ctx->consumer_data, event, NULL, &ctx->err))
+    if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
         goto error;
 
     bool done = false;
@@ -153,7 +153,7 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_DOCUMENT_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
+            if (!ctx->consumer.callback(ctx->consumer.data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -179,7 +179,7 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->consumer(ctx->consumer_data, event, NULL, &ctx->err))
+    if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
         goto error;
 
     bool done = false;
@@ -201,7 +201,7 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_SEQUENCE_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
+            if (!ctx->consumer.callback(ctx->consumer.data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -227,7 +227,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
-    if (!ctx->consumer(ctx->consumer_data, event, NULL, &ctx->err))
+    if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
         goto error;
 
     bool done = false;
@@ -249,7 +249,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
                 goto error;
             break;
         case YAML_MAPPING_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
+            if (!ctx->consumer.callback(ctx->consumer.data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;
@@ -284,7 +284,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         event->data.scalar.plain_implicit = 1;
         event->data.scalar.quoted_implicit = 1;
 
-        if (!ctx->consumer(ctx->consumer_data, event, NULL, &ctx->err))
+        if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
             goto error;
 
         return 1;
@@ -361,7 +361,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         goto error;
     }
 
-    if (!ctx->consumer(ctx->consumer_data, event, ctx->lua, &ctx->err))
+    if (!ctx->consumer.callback(ctx->consumer.data, event, ctx->lua, &ctx->err))
         goto error;
 
     lua_settop(ctx->lua, base);

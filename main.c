@@ -117,9 +117,7 @@ int debug_handler(lua_State *L, yaml_event_t *event, lua_State *L2, yl_error_t *
 
 int emitter_handler(yaml_emitter_t *emitter, yaml_event_t *event, lua_State *L, yl_error_t *err)
 {
-    if (L != NULL)
-        if (!yl_render_scalar(L, event, err))
-            goto error;
+    (void)L;
 
     if (!yaml_emitter_emit(emitter, event))
         goto error;
@@ -190,12 +188,15 @@ int main(int argc, char *argv[])
 
     yl_load_safe_libraries(ctx.lua);
 
+    ctx.consumer.callback = (yl_event_consumer_callback_t *)yl_render_event;
     if (args.debug) {
-        ctx.consumer = (yl_event_consumer_t *)debug_handler;
-        ctx.consumer_data = ctx.lua;
+        ctx.consumer.data = &(yl_event_consumer_t){
+            (yl_event_consumer_callback_t *)debug_handler,
+            ctx.lua};
     } else {
-        ctx.consumer = (yl_event_consumer_t *)emitter_handler;
-        ctx.consumer_data = &emitter;
+        ctx.consumer.data = &(yl_event_consumer_t){
+            (yl_event_consumer_callback_t *)emitter_handler,
+            &emitter};
     }
 
     if (args.test) {
