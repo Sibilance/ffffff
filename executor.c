@@ -4,15 +4,9 @@
 
 #include "lauxlib.h"
 
+#include "error.h"
 #include "executor.h"
 #include "render.h"
-
-static int lua_error_handler(lua_State *L)
-{
-    const char *msg = lua_tostring(L, 1);
-    luaL_traceback(L, L, msg, 1);
-    return 1; // Just return the traceback, discard the message.
-}
 
 /*
 ** Execute a buffer in the Lua interpreter.
@@ -21,12 +15,8 @@ static int lua_error_handler(lua_State *L)
 */
 static int execute_lua(lua_State *L, const char *buf)
 {
-    if (!lua_checkstack(L, 3)) {
-        return LUA_ERRMEM;
-    }
-
     int base = lua_gettop(L);
-    lua_pushcfunction(L, lua_error_handler);
+    lua_pushcfunction(L, yl_lua_error_handler);
 
     const char *retline = lua_pushfstring(L, "return %s;", buf);
     int status = luaL_loadbufferx(L, retline, strlen(retline), buf, "t");
@@ -46,12 +36,6 @@ static int execute_lua(lua_State *L, const char *buf)
 static int execute_lua_function(lua_State *L, const char *fnname, int nargs)
 {
     int base = lua_gettop(L) - nargs;
-
-    if (!lua_checkstack(L, 3)) {
-        lua_settop(L, base);
-        return LUA_ERRMEM;
-    }
-
     int status = LUA_OK;
 
     // First, try to get the value as a global variable.
@@ -77,7 +61,7 @@ static int execute_lua_function(lua_State *L, const char *fnname, int nargs)
 
     lua_insert(L, base + 1); // Move the function below its argument(s).
 
-    lua_pushcfunction(L, lua_error_handler);
+    lua_pushcfunction(L, yl_lua_error_handler);
     lua_insert(L, base + 1); // Move the error handler to the bottom.
 
     status = lua_pcall(L, nargs, 1, base + 1);
@@ -298,8 +282,8 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         return 1;
     }
 
-    // Ensure room for the scalar value.
-    if (!lua_checkstack(ctx->lua, 1)) {
+    // Ensure room for the scalar value, and executing lua functions.
+    if (!lua_checkstack(ctx->lua, 10)) {
         ctx->err.type = YL_MEMORY_ERROR;
         ctx->err.line = event->start_mark.line;
         ctx->err.column = event->start_mark.column;

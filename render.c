@@ -9,20 +9,99 @@
 // Also plenty for 17 digit precision floats.
 #define NUMBUFSIZE 32
 
+/*
+** Get the length of the table at the top of the stack.
+** Does not remove the table from the stack.
+** On return, pushes either an error message, the length, or nil to the stack.
+**/
+static yl_error_type_t get_length(lua_State *L)
+{
+    if (lua_type(L, -1) != LUA_TTABLE) {
+        lua_pushfstring(L, luaL_typename(L, -1));
+        return YL_TYPE_ERROR;
+    }
+
+    if (lua_getmetatable(L, -1)) {
+        // If there's a metatable, use it as the length operator.
+        int type = lua_getfield(L, -1, "__len");
+        lua_pop(L, 2); // Remove the function and metatable.
+        if (type == LUA_TFUNCTION) {
+            lua_len(L, -1); // Push the length onto the stack.
+
+            int isnum;
+            lua_tointegerx(L, -1, &isnum);
+            if (!isnum) {
+                lua_pushfstring(L, luaL_typename(L, -1));
+                lua_remove(L, -2); // Remove the length.
+                return YL_TYPE_ERROR;
+            }
+
+            return YL_NO_ERROR;
+        }
+
+        lua_pushnil(L); // No length, this is a mapping.
+        return YL_NO_ERROR;
+    } else {
+        // If there's no metatable, get the "n" field if it exists,
+        // or use the raw length operator.
+        lua_getfield(L, -1, "n");
+        if (lua_isinteger(L, -1)) {
+            return YL_NO_ERROR;
+        } else {
+            lua_pop(L, 1); // Remove the nil "n" field value.
+            int type = lua_rawgeti(L, -1, 1);
+            // If there is a 1st element, it's a sequence. Get the length.
+            if (type != LUA_TNIL) {
+                lua_pop(L, 1); // Remove the value from rawgeti().
+                lua_pushinteger(L, lua_rawlen(L, -1));
+                return YL_NO_ERROR;
+            }
+            // -1: nil; -2: table
+            // Assume a fully empty table is a sequence of zero length.
+            if (lua_next(L, -2) == 0) {
+                lua_pushinteger(L, 0);
+                return YL_NO_ERROR;
+            }
+            // -1: value; -2: key; -3: table
+            lua_pop(L, 2);
+        }
+    }
+
+    lua_pushnil(L); // No length; this is a mapping.
+    return YL_NO_ERROR;
+}
+
 int yl_render_event(yl_event_consumer_t *consumer, yaml_event_t *event, lua_State *L, yl_error_t *err)
 {
+    size_t line = event->start_mark.line;
+    size_t column = event->start_mark.column;
+
     if (L != NULL) {
         int type = lua_type(L, -1);
-        switch (type) {
-        // TODO: deal with mappings
-        case LUA_TTABLE:
-            if (!yl_render_sequence(consumer, event, L, err))
+        if (type == LUA_TTABLE) {
+            yl_error_type_t errtype = get_length(L);
+            if (errtype != YL_NO_ERROR) {
+                err->type = errtype;
+                err->line = line;
+                err->column = column;
+                err->context = "While rendering an event, got unexpected problem checking table length";
+                err->message = lua_tostring(L, -1);
                 goto error;
-            break;
-        default:
+            }
+
+            int isnum = lua_isinteger(L, -1);
+            lua_pop(L, 1); // Pop the length.
+
+            if (isnum) {
+                if (!yl_render_sequence(consumer, event, L, err))
+                    goto error;
+            } else {
+                if (!yl_render_mapping(consumer, event, L, err))
+                    goto error;
+            }
+        } else {
             if (!yl_render_scalar(consumer, event, L, err))
                 goto error;
-            break;
         }
     } else if (!consumer->callback(consumer->data, event, NULL, err)) {
         goto error;
@@ -31,6 +110,8 @@ int yl_render_event(yl_event_consumer_t *consumer, yaml_event_t *event, lua_Stat
     return 1;
 
 error:
+    yaml_event_delete(event);
+
     return 0;
 }
 
@@ -142,6 +223,7 @@ error:
         free(buf);
     if (anchor != NULL)
         free(anchor);
+    yaml_event_delete(event);
     lua_pop(L, 1); // Remove the argument from the stack.
 
     return 0;
@@ -174,34 +256,27 @@ int yl_render_sequence(yl_event_consumer_t *consumer, yaml_event_t *event, lua_S
         goto error;
     }
 
-    long int length = -1;
-    if (lua_getmetatable(L, -1)) {
-        // If there's a metatable, use the ordinary length operator.
-        lua_pop(L, 1); // Remove the metatable.
-        lua_len(L, -1);
-        int isnum;
-        length = lua_tointegerx(L, -1, &isnum);
-        if (!isnum) {
-            err->type = YL_TYPE_ERROR;
-            err->line = line;
-            err->column = column;
-            err->context = "While rendering a sequence, got invalid length type";
-            err->message = luaL_typename(L, -1);
-            lua_pop(L, 1); // Remove the length.
-            goto error;
-        }
-        lua_pop(L, 1); // Remove the length.
-    } else {
-        // If there's no metatable, get the "n" field if it exists,
-        // or use the raw length operator.
-        lua_getfield(L, -1, "n");
-        if (lua_isinteger(L, -1)) {
-            length = lua_tointeger(L, -1);
-        } else {
-            length = lua_rawlen(L, -2);
-        }
-        lua_pop(L, 1); // Remove the "n" field value.
+    yl_error_type_t errtype = get_length(L);
+    if (errtype != YL_NO_ERROR) {
+        err->type = errtype;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a sequence, got invalid length";
+        err->message = lua_tostring(L, -1);
+        goto error;
     }
+    int isnum;
+    long int length = lua_tointegerx(L, -1, &isnum);
+    if (!isnum) {
+        err->type = YL_TYPE_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a sequence, could not get length";
+        err->message = luaL_typename(L, -1);
+        lua_pop(L, 1);
+        goto error;
+    }
+    lua_pop(L, 1);
 
     if (!yaml_sequence_start_event_initialize(event, (yaml_char_t *)anchor, NULL, 1, YAML_ANY_SEQUENCE_STYLE)) {
         err->type = YL_RENDER_ERROR;
@@ -242,6 +317,90 @@ int yl_render_sequence(yl_event_consumer_t *consumer, yaml_event_t *event, lua_S
 error:
     if (anchor != NULL)
         free(anchor);
+    yaml_event_delete(event);
+    lua_pop(L, 1); // Remove the argument from the stack.
+
+    return 0;
+}
+
+int yl_render_mapping(yl_event_consumer_t *consumer, yaml_event_t *event, lua_State *L, yl_error_t *err)
+{
+    size_t line = event->start_mark.line;
+    size_t column = event->start_mark.column;
+    char *anchor = yl_copy_anchor(event);
+
+    yaml_event_delete(event);
+
+    int type = lua_type(L, -1);
+    if (type != LUA_TTABLE) {
+        err->type = YL_TYPE_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a mapping, got unexpected Lua type";
+        err->message = lua_typename(L, type);
+        goto error;
+    }
+
+    if (!lua_checkstack(L, 10)) {
+        err->type = YL_MEMORY_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a mapping, got memory error";
+        err->message = "could not expand Lua stack";
+        goto error;
+    }
+
+    if (!yaml_mapping_start_event_initialize(event, (yaml_char_t *)anchor, NULL, 1, YAML_ANY_MAPPING_STYLE)) {
+        err->type = YL_RENDER_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a mapping, got unexpected error";
+        err->message = "could not initialize mapping start event";
+        goto error;
+    }
+
+    if (!consumer->callback(consumer->data, event, NULL, err))
+        goto error;
+
+    lua_pushnil(L); // -1: nil; -2: table
+    while (lua_next(L, -2) != 0) {
+        // -1: value; -2: key; -3: table
+        lua_pushvalue(L, -2); // Push a copy of the key to render (and discard).
+        // Pops and renders key copy.
+        if (!yl_render_event(consumer, event, L, err)) {
+            lua_pop(L, 2); // Pop value and key.
+            goto error;
+        }
+        // Pops and renders value.
+        if (!yl_render_event(consumer, event, L, err)) {
+            lua_pop(L, 1); // Pop key.
+            goto error;
+        }
+        // -1: key; -2: table
+    }
+
+    if (!yaml_mapping_end_event_initialize(event)) {
+        err->type = YL_RENDER_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a mapping, got unexpected error";
+        err->message = "could not initialize mapping end event";
+        goto error;
+    }
+
+    if (!consumer->callback(consumer->data, event, NULL, err))
+        goto error;
+
+    if (anchor != NULL)
+        free(anchor);
+    lua_pop(L, 1); // Remove the argument from the stack.
+
+    return 1;
+
+error:
+    if (anchor != NULL)
+        free(anchor);
+    yaml_event_delete(event);
     lua_pop(L, 1); // Remove the argument from the stack.
 
     return 0;
