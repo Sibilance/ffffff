@@ -20,7 +20,7 @@ int yl_copy_event(yaml_event_t *original, yaml_event_t *copy);
 
 const char *yl_event_name(yaml_event_type_t event_type);
 
-int yl_record_event(yl_event_record_t *event_record, yaml_event_t *event, yl_error_t *err);
+int yl_record_event(yl_event_record_t *event_record, yaml_event_t *event, lua_State *L, yl_error_t *err);
 
 void yl_event_record_delete(yl_event_record_t *event_record);
 

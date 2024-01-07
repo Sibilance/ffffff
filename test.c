@@ -8,30 +8,6 @@
 #include "render.h"
 #include "test.h"
 
-static int yl_record_rendered_event(yl_event_record_t *event_record, yaml_event_t *event, lua_State *L, yl_error_t *err)
-{
-    if (L != NULL) {
-        int type = lua_type(L, -1);
-        switch (type) {
-        case LUA_TTABLE:
-            if (!yl_render_sequence(L, event, event_record, err))
-                goto error;
-            break;
-        default:
-            if (!yl_render_scalar(L, event, err) || !yl_record_event(event_record, event, err))
-                goto error;
-            break;
-        }
-    } else if (!yl_record_event(event_record, event, err)) {
-        goto error;
-    }
-
-    return 1;
-
-error:
-    return 0;
-}
-
 int yl_test_stream(yl_execution_context_t *ctx)
 {
     yaml_event_t next_event = {0};
@@ -57,14 +33,16 @@ int yl_test_stream(yl_execution_context_t *ctx)
 
         switch (next_event.type) {
         case YAML_STREAM_START_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
+            if (!ctx->consumer.callback(ctx->consumer.data, &next_event, NULL, &ctx->err))
                 goto error;
             break;
         case YAML_DOCUMENT_START_EVENT: {
             saved_ctx = *ctx;
 
-            ctx->consumer = (yl_event_consumer_t *)yl_record_rendered_event;
-            ctx->consumer_data = recording_actual ? &actual_events : &expected_events;
+            ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_render_event;
+            ctx->consumer.data = &(yl_event_consumer_t){
+                (yl_event_consumer_callback_t *)yl_record_event,
+                recording_actual ? &actual_events : &expected_events};
 
             size_t line = next_event.start_mark.line;
             size_t column = next_event.start_mark.column;
@@ -72,8 +50,8 @@ int yl_test_stream(yl_execution_context_t *ctx)
             if (!yl_execute_document(ctx, &next_event))
                 goto error;
 
-            ctx->consumer = saved_ctx.consumer;
-            ctx->consumer_data = saved_ctx.consumer_data;
+            ctx->consumer.callback = saved_ctx.consumer.callback;
+            ctx->consumer.data = saved_ctx.consumer.data;
 
             if (recording_actual) {
                 recording_actual = false;
@@ -88,11 +66,11 @@ int yl_test_stream(yl_execution_context_t *ctx)
 
                 // Consume both the sets of events.
                 for (size_t i = 0; i < actual_events.length; ++i) {
-                    if (!ctx->consumer(ctx->consumer_data, &actual_events.events[i], NULL, &ctx->err))
+                    if (!ctx->consumer.callback(ctx->consumer.data, &actual_events.events[i], NULL, &ctx->err))
                         goto error;
                 }
                 for (size_t i = 0; i < expected_events.length; ++i) {
-                    if (!ctx->consumer(ctx->consumer_data, &expected_events.events[i], NULL, &ctx->err))
+                    if (!ctx->consumer.callback(ctx->consumer.data, &expected_events.events[i], NULL, &ctx->err))
                         goto error;
                 }
 
@@ -115,7 +93,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
             }
         } break;
         case YAML_STREAM_END_EVENT:
-            if (!ctx->consumer(ctx->consumer_data, &next_event, NULL, &ctx->err))
+            if (!ctx->consumer.callback(ctx->consumer.data, &next_event, NULL, &ctx->err))
                 goto error;
             done = true;
             break;

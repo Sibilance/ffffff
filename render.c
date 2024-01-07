@@ -9,7 +9,32 @@
 // Also plenty for 17 digit precision floats.
 #define NUMBUFSIZE 32
 
-int yl_render_scalar(lua_State *L, yaml_event_t *event, yl_error_t *err)
+int yl_render_event(yl_event_consumer_t *consumer, yaml_event_t *event, lua_State *L, yl_error_t *err)
+{
+    if (L != NULL) {
+        int type = lua_type(L, -1);
+        switch (type) {
+        // TODO: deal with mappings
+        case LUA_TTABLE:
+            if (!yl_render_sequence(consumer, event, L, err))
+                goto error;
+            break;
+        default:
+            if (!yl_render_scalar(consumer, event, L, err))
+                goto error;
+            break;
+        }
+    } else if (!consumer->callback(consumer->data, event, NULL, err)) {
+        goto error;
+    }
+
+    return 1;
+
+error:
+    return 0;
+}
+
+int yl_render_scalar(yl_event_consumer_t *consumer, yaml_event_t *event, lua_State *L, yl_error_t *err)
 {
     size_t line = event->start_mark.line;
     size_t column = event->start_mark.column;
@@ -101,6 +126,9 @@ int yl_render_scalar(lua_State *L, yaml_event_t *event, yl_error_t *err)
         goto error;
     }
 
+    if (!consumer->callback(consumer->data, event, NULL, err))
+        goto error;
+
     if (buf != NULL)
         free(buf);
     if (anchor != NULL)
@@ -119,7 +147,7 @@ error:
     return 0;
 }
 
-int yl_render_sequence(lua_State *L, yaml_event_t *event, yl_event_record_t *event_record, yl_error_t *err)
+int yl_render_sequence(yl_event_consumer_t *consumer, yaml_event_t *event, lua_State *L, yl_error_t *err)
 {
     size_t line = event->start_mark.line;
     size_t column = event->start_mark.column;
@@ -184,18 +212,12 @@ int yl_render_sequence(lua_State *L, yaml_event_t *event, yl_event_record_t *eve
         goto error;
     }
 
-    if (!yl_record_event(event_record, event, err))
+    if (!consumer->callback(consumer->data, event, NULL, err))
         goto error;
 
     for (long int i = 1; i <= length; ++i) {
-        int type = lua_geti(L, -1, i);
-        (void)type;
-        // TODO: infer the type and render nested sequences and mappings
-        if (!yl_render_scalar(L, event, err)) {
-            goto error;
-        }
-
-        if (!yl_record_event(event_record, event, err))
+        lua_geti(L, -1, i);
+        if (!yl_render_event(consumer, event, L, err))
             goto error;
     }
 
@@ -208,7 +230,7 @@ int yl_render_sequence(lua_State *L, yaml_event_t *event, yl_event_record_t *eve
         goto error;
     }
 
-    if (!yl_record_event(event_record, event, err))
+    if (!consumer->callback(consumer->data, event, NULL, err))
         goto error;
 
     if (anchor != NULL)
