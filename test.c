@@ -39,10 +39,8 @@ int yl_test_stream(yl_execution_context_t *ctx)
         case YAML_DOCUMENT_START_EVENT: {
             saved_ctx = *ctx;
 
-            ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_render_event;
-            ctx->consumer.data = &(yl_event_consumer_t){
-                (yl_event_consumer_callback_t *)yl_record_event,
-                recording_actual ? &actual_events : &expected_events};
+            ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_record_event;
+            ctx->consumer.data = recording_actual ? &actual_events : &expected_events;
 
             size_t line = next_event.start_mark.line;
             size_t column = next_event.start_mark.column;

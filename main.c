@@ -190,13 +190,11 @@ int main(int argc, char *argv[])
 
     ctx.consumer.callback = (yl_event_consumer_callback_t *)yl_render_event;
     if (args.debug) {
-        ctx.consumer.data = &(yl_event_consumer_t){
-            (yl_event_consumer_callback_t *)debug_handler,
-            ctx.lua};
+        ctx.consumer.callback = (yl_event_consumer_callback_t *)debug_handler;
+        ctx.consumer.data = ctx.lua;
     } else {
-        ctx.consumer.data = &(yl_event_consumer_t){
-            (yl_event_consumer_callback_t *)emitter_handler,
-            &emitter};
+        ctx.consumer.callback = (yl_event_consumer_callback_t *)emitter_handler;
+        ctx.consumer.data = &emitter;
     }
 
     if (args.test) {

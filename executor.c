@@ -5,6 +5,7 @@
 #include "lauxlib.h"
 
 #include "executor.h"
+#include "render.h"
 
 static int lua_error_handler(lua_State *L)
 {
@@ -131,6 +132,10 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
+    yl_event_consumer_t wrapped_consumer = ctx->consumer;
+    ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_render_event;
+    ctx->consumer.data = &wrapped_consumer;
+
     if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
         goto error;
 
@@ -168,9 +173,12 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 
         yaml_event_delete(&next_event);
     }
+
+    ctx->consumer = wrapped_consumer;
     return 1;
 
 error:
+    ctx->consumer = wrapped_consumer;
     yaml_event_delete(&next_event);
     return 0;
 }
