@@ -2,6 +2,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "lauxlib.h"
+#include "lua.h"
 #include "yaml.h"
 
 #include "environment.h"
