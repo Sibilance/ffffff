@@ -14,12 +14,12 @@ build/%.o: %.c
 	mkdir -p build
 	$(CC) $(ALL_CFLAGS) -c $< -o $@
 
-deps.mk: *.c *.h deps.sh
-	./deps.sh >$@
+Make-deps.mk: *.c *.h Make-deps.sh
+	./Make-deps.sh >$@
 
-include deps.mk
-include lua.mk
-include libyaml.mk
+include Make-deps.mk
+include Make-libyaml.mk
+include Make-lua.mk
 
 .PHONY: clean
 clean:
