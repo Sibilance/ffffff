@@ -5,6 +5,30 @@
 
 #include "lua_helpers.h"
 
+/**
+ * Compare the top two values on the Lua stack, allowing values of different types
+ * to be compared in a consistent way.
+ *
+ * @param[in,out]   L           A pointer to the Lua state.
+ *
+ * @returns On success, returns the number of results leaves the boolean result on
+ * the stack.
+ */
+static int yl_lua_compare(lua_State *L)
+{
+    int left_type = lua_type(L, -2);
+    int right_type = lua_type(L, -1);
+    bool result;
+    if (left_type == right_type) {
+        result = lua_compare(L, -2, -1, LUA_OPLT);
+    } else {
+        result = left_type < right_type;
+    }
+    lua_pop(L, 2); // Remove arguments.
+    lua_pushboolean(L, result);
+    return 1;
+}
+
 yl_error_type_t yl_lua_sort_keys(lua_State *L, int index)
 {
     index = lua_absindex(L, index);
@@ -80,21 +104,6 @@ yl_error_type_t yl_lua_sort_array(lua_State *L, int index)
     // -1: error handler; index: array
     lua_pop(L, 1); // Remove the error handler.
     return YL_NO_ERROR;
-}
-
-int yl_lua_compare(lua_State *L)
-{
-    int left_type = lua_type(L, -2);
-    int right_type = lua_type(L, -1);
-    bool result;
-    if (left_type == right_type) {
-        result = lua_compare(L, -2, -1, LUA_OPLT);
-    } else {
-        result = left_type < right_type;
-    }
-    lua_pop(L, 2); // Remove arguments.
-    lua_pushboolean(L, result);
-    return 1;
 }
 
 yl_error_type_t yl_lua_get_length(lua_State *L, int index)

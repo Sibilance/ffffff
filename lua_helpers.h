@@ -28,17 +28,6 @@ yl_error_type_t yl_lua_sort_keys(lua_State *L, int index);
 yl_error_type_t yl_lua_sort_array(lua_State *L, int index);
 
 /**
- * Compare the top two values on the Lua stack, allowing values of different types
- * to be compared in a consistent way.
- *
- * @param[in,out]   L           A pointer to the Lua state.
- *
- * @returns On success, returns the number of results leaves the boolean result on
- * the stack.
- */
-int yl_lua_compare(lua_State *L);
-
-/**
  * Get the length of the table at the top of the stack without removing it.
  *
  * @param[in,out]   L       A pointer to the Lua state.
