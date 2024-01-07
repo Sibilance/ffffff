@@ -164,3 +164,55 @@ yl_error_type_t yl_lua_get_length(lua_State *L, int index)
     lua_pushnil(L); // No length; this is a mapping.
     return YL_NO_ERROR;
 }
+
+int yl_lua_execute_lua(lua_State *L, const char *buf)
+{
+    int base = lua_gettop(L);
+    lua_pushcfunction(L, yl_lua_error_handler);
+
+    const char *retline = lua_pushfstring(L, "return %s;", buf);
+    int status = luaL_loadbufferx(L, retline, strlen(retline), buf, "t");
+    lua_remove(L, base + 2); // Remove retline.
+    if (status == LUA_OK)
+        status = lua_pcall(L, 0, 1, base + 1);
+
+    lua_remove(L, base + 1); // Remove the error_handler.
+    return status;
+}
+
+int yl_lua_execute_lua_function(lua_State *L, const char *fnname, int nargs)
+{
+    int base = lua_gettop(L) - nargs;
+    int status = LUA_OK;
+
+    // First, try to get the value as a global variable.
+    int type = lua_getglobal(L, fnname);
+
+    if (type == LUA_TNIL) {
+        lua_pop(L, 1);
+
+        status = yl_lua_execute_lua(L, fnname);
+        if (status != LUA_OK)
+            return status;
+    }
+
+    type = lua_type(L, -1);
+
+    if (type != LUA_TFUNCTION) {
+        // Clear the stack and return an error message.
+        lua_settop(L, base);
+        lua_pushfstring(L, "expected `%s` to be a function, but instead got %s", fnname,
+                        lua_typename(L, type));
+        return LUA_ERRRUN;
+    }
+
+    lua_insert(L, base + 1); // Move the function below its argument(s).
+
+    lua_pushcfunction(L, yl_lua_error_handler);
+    lua_insert(L, base + 1); // Move the error handler to the bottom.
+
+    status = lua_pcall(L, nargs, 1, base + 1);
+
+    lua_remove(L, base + 1); // Remove the error_handler.
+    return status;
+}
