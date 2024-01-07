@@ -12,7 +12,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
 {
     yaml_event_t next_event = {0};
 
-    yl_execution_context_t saved_ctx = {0};
+    yl_event_consumer_t saved_consumer = {0};
     bool recording_actual = true;
     yl_event_record_t actual_events = {0};
     yl_event_record_t expected_events = {0};
@@ -37,7 +37,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
                 goto error;
             break;
         case YAML_DOCUMENT_START_EVENT: {
-            saved_ctx = *ctx;
+            saved_consumer = ctx->consumer;
 
             ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_record_event;
             ctx->consumer.data = recording_actual ? &actual_events : &expected_events;
@@ -48,8 +48,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
             if (!yl_execute_document(ctx, &next_event))
                 goto error;
 
-            ctx->consumer.callback = saved_ctx.consumer.callback;
-            ctx->consumer.data = saved_ctx.consumer.data;
+            ctx->consumer = saved_consumer;
 
             if (recording_actual) {
                 recording_actual = false;
