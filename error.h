@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 
+#include "lua.h"
 #include "yaml.h"
 
 #define YL_SUCCESS ((yl_error_t){0})
@@ -34,3 +35,5 @@ typedef struct _yl_error_s {
 } yl_error_t;
 
 const char *yl_error_name(yl_error_type_t error_type);
+
+int yl_lua_error_handler(lua_State *L);

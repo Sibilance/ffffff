@@ -69,6 +69,21 @@ false
 - 4
 - 16
 
+---
+! >
+  {n=3, 1, 2}
+---
+- 1
+- 2
+- ~
+
+---
+! >
+  {a=1, b=2}
+---
+b: 2  # TODO: ensure keys are in sorted order, instead of arbitrary.
+a: 1
+
 ---  # Test dangerous functions are absent.
 - ! dofile
 - ! load
