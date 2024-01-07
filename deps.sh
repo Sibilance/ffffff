@@ -24,6 +24,10 @@ function dependencies() {
     done
 }
 
+ofiles=()
 for file in *.c; do
+    ofiles+=("build/${file/%.c/.o}")
     echo "build/${file/%.c/.o}:" $(dependencies "$file" | sort | uniq)
 done
+
+echo build/main.out: ${ofiles[*]}
