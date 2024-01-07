@@ -1,6 +1,5 @@
 #pragma once
 
-#include "lauxlib.h"
-#include "lualib.h"
+#include "lua.h"
 
 void yl_load_safe_libraries(lua_State *L);

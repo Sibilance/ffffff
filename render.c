@@ -1,6 +1,7 @@
 #include <ctype.h>
 
 #include "lauxlib.h"
+#include "lualib.h"
 
 #include "event.h"
 #include "render.h"
@@ -362,22 +363,74 @@ int yl_render_mapping(yl_event_consumer_t *consumer, yaml_event_t *event, lua_St
     if (!consumer->callback(consumer->data, event, NULL, err))
         goto error;
 
-    lua_pushnil(L); // -1: nil; -2: table
+    lua_newtable(L); // Add table for collecting keys.
+    lua_insert(L, -2);
+    lua_pushnil(L); // -1: nil; -2: table; -3: list of keys
+    long int i = 1;
     while (lua_next(L, -2) != 0) {
-        // -1: value; -2: key; -3: table
-        lua_pushvalue(L, -2); // Push a copy of the key to render (and discard).
-        // Pops and renders key copy.
-        if (!yl_render_event(consumer, event, L, err)) {
-            lua_pop(L, 2); // Pop value and key.
-            goto error;
-        }
-        // Pops and renders value.
-        if (!yl_render_event(consumer, event, L, err)) {
-            lua_pop(L, 1); // Pop key.
-            goto error;
-        }
-        // -1: key; -2: table
+        // -1: value; -2: key; -3: table; -4: list of keys
+        lua_pop(L, 1);        // Pop value, we don't need it yet.
+        lua_pushvalue(L, -1); // Duplicate key, it gets consumed by rawseti().
+        // -1: key; -2: key; -3: table; -4: list of keys
+        lua_rawseti(L, -4, i++);
+        // -1: key; -2: table; -3: list of keys
     }
+    // -1: table; -2: list of keys
+    lua_pushcfunction(L, yl_lua_error_handler);
+    luaL_requiref(L, LUA_TABLIBNAME, luaopen_table, false);
+    type = lua_getfield(L, -1, "sort");
+    lua_remove(L, -2); // Delete table module reference.
+    // -1: table.sort; -2: error handler; -3; table; -4: list of keys
+    lua_pushvalue(L, -4); // Duplicate list of keys, it gets consumed by sort().
+    // -1: list of keys; -2: table.sort; -3: error handler; -4; table; -5: list of keys
+    int status = lua_pcall(L, 1, 0, -3);
+    if (status != LUA_OK) {
+        // -1: error message; -2: error handler; -3: table; -4: list of keys
+        lua_remove(L, -4); // Remove list of keys.
+        lua_insert(L, -3); // Insert error message below table.
+        lua_pop(L, 1);     // Pop error handler.
+        // -1: table; -2: list of keys
+        switch (status) {
+        case LUA_ERRRUN:
+            err->type = YL_RUNTIME_ERROR;
+            break;
+        case LUA_ERRMEM:
+            err->type = YL_MEMORY_ERROR;
+            break;
+        case LUA_ERRERR:
+            err->type = YL_ERROR_HANDLER_ERROR;
+            break;
+        default:
+            err->type = YL_RUNTIME_ERROR;
+            break;
+        }
+        err->type = YL_RUNTIME_ERROR;
+        err->line = line;
+        err->column = column;
+        err->context = "While rendering a mapping, got error sorting keys";
+        err->message = lua_tostring(L, -2);
+        goto error;
+    }
+    // -1: error handler; -2 table; -3: list of keys (sorted)
+    lua_pop(L, 1);     // Remove the error handler.
+    lua_insert(L, -2); // Move table below list of keys.
+
+    long int length = lua_rawlen(L, -1);
+    for (long int i = 1; i <= length; ++i) {
+        lua_rawgeti(L, -1, i);
+        lua_pushvalue(L, -1); // Duplicate key, it gets consumed by yl_render_event().
+        if (!yl_render_event(consumer, event, L, err)) {
+            lua_pop(L, 2); // Pop the key and list of keys.
+            goto error;
+        }
+        // -1: key; -2 list of keys (sorted); -3: table
+        lua_gettable(L, -3); // Consumes key.
+        if (!yl_render_event(consumer, event, L, err)) {
+            lua_pop(L, 2); // Pop the value and list of keys.
+            goto error;
+        }
+    }
+    lua_pop(L, 1); // Pop the list of keys.
 
     if (!yaml_mapping_end_event_initialize(event)) {
         err->type = YL_RENDER_ERROR;

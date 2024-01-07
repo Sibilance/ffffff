@@ -1,5 +1,8 @@
 #include <stdbool.h>
 
+#include "lauxlib.h"
+#include "lualib.h"
+
 #include "environment.h"
 
 void yl_load_safe_libraries(lua_State *L)

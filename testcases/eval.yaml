@@ -79,10 +79,12 @@ false
 
 ---
 ! >
-  {a=1, b=2}
+  {a=1, b=2, c=3, d=4}
 ---
-b: 2  # TODO: ensure keys are in sorted order, instead of arbitrary.
 a: 1
+b: 2
+c: 3
+d: 4
 
 ---  # Test dangerous functions are absent.
 - ! dofile
