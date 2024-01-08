@@ -53,11 +53,11 @@ int yl_test_stream(yl_execution_context_t *ctx)
             if (recording_actual) {
                 recording_actual = false;
             } else {
-                actual_rendering = yl_render_event_record(&actual_events, &ctx->err);
+                actual_rendering = yl_event_record_to_string(&actual_events, &ctx->err);
                 if (actual_rendering == NULL)
                     goto error;
 
-                expected_rendering = yl_render_event_record(&expected_events, &ctx->err);
+                expected_rendering = yl_event_record_to_string(&expected_events, &ctx->err);
                 if (expected_rendering == NULL)
                     goto error;
 
@@ -72,6 +72,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
                 }
 
                 if (strcmp(actual_rendering, expected_rendering) != 0) {
+                    fprintf(stderr, "%s\n%s\n", actual_rendering, expected_rendering);
                     ctx->err.type = YL_ASSERTION_ERROR;
                     ctx->err.line = line;
                     ctx->err.column = column;

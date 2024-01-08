@@ -110,6 +110,16 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
+    // Ensure room for executing lua functions.
+    if (!lua_checkstack(ctx->lua, 10)) {
+        ctx->err.type = YL_MEMORY_ERROR;
+        ctx->err.line = event->start_mark.line;
+        ctx->err.column = event->start_mark.column;
+        ctx->err.context = "While executing a sequence, encountered an error";
+        ctx->err.message = "could not expand Lua stack space";
+        goto error;
+    }
+
     if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
         goto error;
 
@@ -158,6 +168,32 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
+    char *tag = NULL;
+    size_t line = event->start_mark.line;
+    size_t column = event->start_mark.column;
+    yl_event_consumer_t saved_consumer = {0};
+    yl_lua_table_builder_t table_builder = {0};
+
+    if (event->data.mapping_start.tag &&
+        event->data.mapping_start.tag[0] == '!' &&
+        event->data.mapping_start.tag[1] != '!') {
+        tag = strdup((char *)event->data.mapping_start.tag + 1);
+        saved_consumer = ctx->consumer;
+        table_builder.L = ctx->lua;
+        ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_lua_table_builder;
+        ctx->consumer.data = &table_builder;
+    }
+
+    // Ensure room for executing lua functions.
+    if (!lua_checkstack(ctx->lua, 10)) {
+        ctx->err.type = YL_MEMORY_ERROR;
+        ctx->err.line = event->start_mark.line;
+        ctx->err.column = event->start_mark.column;
+        ctx->err.context = "While executing a mapping, encountered an error";
+        ctx->err.message = "could not expand Lua stack space";
+        goto error;
+    }
+
     if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
         goto error;
 
@@ -195,9 +231,49 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 
         yaml_event_delete(&next_event);
     }
+
+    if (saved_consumer.callback != NULL)
+        ctx->consumer = saved_consumer;
+
+    if (tag != NULL) {
+        int status = yl_lua_execute_lua_function(ctx->lua, tag, 1);
+        free(tag);
+
+        if (status != LUA_OK) {
+            ctx->err.type = YL_EXECUTION_ERROR;
+            switch (status) {
+            case LUA_ERRSYNTAX:
+                ctx->err.type = YL_SYNTAX_ERROR;
+                break;
+            case LUA_ERRRUN:
+                ctx->err.type = YL_RUNTIME_ERROR;
+                break;
+            case LUA_ERRMEM:
+                ctx->err.type = YL_MEMORY_ERROR;
+                break;
+            case LUA_ERRERR:
+                ctx->err.type = YL_ERROR_HANDLER_ERROR;
+                break;
+            default:
+                ctx->err.type = YL_EXECUTION_ERROR;
+                break;
+            }
+            ctx->err.line = line;
+            ctx->err.column = column;
+            ctx->err.context = "While executing a mapping, encountered an error";
+            ctx->err.message = lua_tostring(ctx->lua, 1);
+            goto error;
+        }
+
+        if (!ctx->consumer.callback(ctx->consumer.data, event, ctx->lua, &ctx->err))
+            goto error;
+    }
+
     return 1;
 
 error:
+    if (saved_consumer.callback != NULL)
+        ctx->consumer = saved_consumer;
     yaml_event_delete(&next_event);
     return 0;
 }
@@ -209,12 +285,6 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     if (!event->data.scalar.tag ||
         event->data.scalar.tag[0] != '!' ||
         event->data.scalar.tag[1] == '!') {
-
-        free(event->data.scalar.tag);
-        event->data.scalar.tag = NULL;
-        event->data.scalar.plain_implicit = 1;
-        event->data.scalar.quoted_implicit = 1;
-
         if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
             goto error;
 
@@ -242,27 +312,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
         else
             lua_pushlstring(ctx->lua, value, length);
     } else {
-        if (style == YAML_PLAIN_SCALAR_STYLE) {
-            char *end;
-            lua_Integer intvalue;
-            lua_Number doublevalue;
-
-            if (length == 0 || (length == 1 && value[0] == '~') || (length == 4 && strcmp(value, "null") == 0)) {
-                lua_pushnil(ctx->lua);
-            } else if (length == 4 && strcmp(value, "true") == 0) {
-                lua_pushboolean(ctx->lua, true);
-            } else if (length == 5 && strcmp(value, "false") == 0) {
-                lua_pushboolean(ctx->lua, false);
-            } else if (intvalue = strtoll(value, &end, 0), value + length == end) {
-                lua_pushinteger(ctx->lua, intvalue);
-            } else if (doublevalue = strtod(value, &end), value + length == end) {
-                lua_pushnumber(ctx->lua, doublevalue);
-            } else {
-                lua_pushlstring(ctx->lua, value, length);
-            }
-        } else {
-            lua_pushlstring(ctx->lua, value, length);
-        }
+        yl_lua_value_from_scalar(ctx->lua, style, length, value);
         status = yl_lua_execute_lua_function(ctx->lua, (char *)event->data.scalar.tag + 1, 1);
     }
 

@@ -23,3 +23,9 @@ string
 !string.reverse drawer
 ---
 reward
+
+---
+!type 
+foo: bar
+---
+table

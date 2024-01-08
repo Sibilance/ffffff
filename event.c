@@ -162,7 +162,7 @@ static void stringbuilder_delete(stringbuilder_t *builder)
     *builder = (stringbuilder_t){0};
 }
 
-char *yl_render_event_record(yl_event_record_t *event_record, yl_error_t *err)
+char *yl_event_record_to_string(yl_event_record_t *event_record, yl_error_t *err)
 {
     yaml_emitter_t emitter = {0};
     yaml_event_t event = {0};
@@ -183,6 +183,8 @@ char *yl_render_event_record(yl_event_record_t *event_record, yl_error_t *err)
         goto error;
     }
 
+    yaml_emitter_set_unicode(&emitter, true);
+    yaml_emitter_set_encoding(&emitter, YAML_UTF8_ENCODING);
     yaml_emitter_set_output(&emitter, (yaml_write_handler_t *)stringbuilder_add, &stringbuilder);
 
     yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
