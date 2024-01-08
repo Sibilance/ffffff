@@ -240,24 +240,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
         free(tag);
 
         if (status != LUA_OK) {
-            ctx->err.type = YL_EXECUTION_ERROR;
-            switch (status) {
-            case LUA_ERRSYNTAX:
-                ctx->err.type = YL_SYNTAX_ERROR;
-                break;
-            case LUA_ERRRUN:
-                ctx->err.type = YL_RUNTIME_ERROR;
-                break;
-            case LUA_ERRMEM:
-                ctx->err.type = YL_MEMORY_ERROR;
-                break;
-            case LUA_ERRERR:
-                ctx->err.type = YL_ERROR_HANDLER_ERROR;
-                break;
-            default:
-                ctx->err.type = YL_EXECUTION_ERROR;
-                break;
-            }
+            ctx->err.type = yl_error_from_lua_error(status);
             ctx->err.line = line;
             ctx->err.column = column;
             ctx->err.context = "While executing a mapping, encountered an error";
@@ -317,24 +300,7 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     }
 
     if (status != LUA_OK) {
-        ctx->err.type = YL_EXECUTION_ERROR;
-        switch (status) {
-        case LUA_ERRSYNTAX:
-            ctx->err.type = YL_SYNTAX_ERROR;
-            break;
-        case LUA_ERRRUN:
-            ctx->err.type = YL_RUNTIME_ERROR;
-            break;
-        case LUA_ERRMEM:
-            ctx->err.type = YL_MEMORY_ERROR;
-            break;
-        case LUA_ERRERR:
-            ctx->err.type = YL_ERROR_HANDLER_ERROR;
-            break;
-        default:
-            ctx->err.type = YL_EXECUTION_ERROR;
-            break;
-        }
+        ctx->err.type = yl_error_from_lua_error(status);
         ctx->err.line = event->start_mark.line;
         ctx->err.column = event->start_mark.column;
         ctx->err.context = "While executing a scalar, encountered an error";

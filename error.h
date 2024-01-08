@@ -36,4 +36,6 @@ typedef struct _yl_error_s {
 
 const char *yl_error_name(yl_error_type_t error_type);
 
+yl_error_type_t yl_error_from_lua_error(int);
+
 int yl_lua_error_handler(lua_State *L);
