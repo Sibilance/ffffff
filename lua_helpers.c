@@ -3,6 +3,7 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+#include "event.h"
 #include "lua_helpers.h"
 
 /**
@@ -215,4 +216,112 @@ int yl_lua_execute_lua_function(lua_State *L, const char *fnname, int nargs)
 
     lua_remove(L, base + 1); // Remove the error_handler.
     return status;
+}
+
+static int new_tested_table_builder(yl_lua_table_builder_t *table_builder, yaml_event_t *event, yl_error_t *err)
+{
+    yl_lua_table_builder_t *parent = malloc(sizeof(yl_lua_table_builder_t));
+    if (parent == NULL) {
+        err->type = YL_MEMORY_ERROR;
+        err->line = event->start_mark.line;
+        err->column = event->start_mark.column;
+        err->context = "While constructing a Lua table, got memory error";
+        err->message = "unable to malloc new table builder";
+        goto error;
+    }
+    *parent = *table_builder;
+    table_builder->table_index = 0;
+    table_builder->sequence_index = 0;
+    table_builder->parent = parent;
+
+    return 1;
+
+error:
+    return 0;
+}
+
+int yl_lua_table_builder(yl_lua_table_builder_t *table_builder, yaml_event_t *event, lua_State *L, yl_error_t *err)
+{
+    switch (event->type) {
+    case YAML_MAPPING_START_EVENT: // Fall through.
+    case YAML_SEQUENCE_START_EVENT:
+        L = table_builder->L;
+
+        // If we're already in a table, create a nested table builder.
+        if (table_builder->table_index != 0)
+            if (!new_tested_table_builder(table_builder, event, err))
+                goto error;
+
+        lua_newtable(L);
+        if (event->type == YAML_MAPPING_START_EVENT) {
+            table_builder->is_mapping = true;
+        }
+        table_builder->table_index = lua_gettop(L);
+        break;
+    case YAML_MAPPING_END_EVENT: // Fall through.
+    case YAML_SEQUENCE_END_EVENT:
+        // Place the newly constructed table at the top of the stack.
+        L = table_builder->L;
+        lua_settop(L, table_builder->table_index);
+
+        if (table_builder->parent != NULL) {
+            // If this was a nested table, back out to the parent table builder.
+            yl_lua_table_builder_t *parent = table_builder->parent;
+            *table_builder = *parent;
+            free(parent);
+        }
+        // Fall through.
+    case YAML_SCALAR_EVENT:
+        ++table_builder->sequence_index;
+        if (L == NULL) {
+            // If L is NULL, this must be a YAML_SCALAR_EVENT. Convert it to a Lua value.
+            L = table_builder->L;
+            yl_lua_value_from_scalar(L, event->data.scalar.style, event->data.scalar.length, (char *)event->data.scalar.value);
+        }
+        if (table_builder->is_mapping) {
+            if ((table_builder->sequence_index & 1) == 0) {
+                // -1: value; -2: key; table_index: table
+                lua_settable(L, table_builder->table_index);
+            }
+        } else {
+            lua_seti(L, table_builder->table_index, table_builder->sequence_index);
+        }
+        break;
+    default:
+        err->type = YL_EXECUTION_ERROR;
+        err->line = event->start_mark.line;
+        err->column = event->start_mark.column;
+        err->context = "While constructing a Lua table, got unexpected event";
+        err->message = yl_event_name(event->type);
+        goto error;
+    }
+    return 1;
+
+error:
+    return 0;
+}
+
+void yl_lua_value_from_scalar(lua_State *L, yaml_scalar_style_t style, size_t length, char *value)
+{
+    if (style == YAML_PLAIN_SCALAR_STYLE) {
+        char *end;
+        lua_Integer intvalue;
+        lua_Number doublevalue;
+
+        if (length == 0 || (length == 1 && value[0] == '~') || (length == 4 && strcmp(value, "null") == 0)) {
+            lua_pushnil(L);
+        } else if (length == 4 && strcmp(value, "true") == 0) {
+            lua_pushboolean(L, true);
+        } else if (length == 5 && strcmp(value, "false") == 0) {
+            lua_pushboolean(L, false);
+        } else if (intvalue = strtoll(value, &end, 0), value + length == end) {
+            lua_pushinteger(L, intvalue);
+        } else if (doublevalue = strtod(value, &end), value + length == end) {
+            lua_pushnumber(L, doublevalue);
+        } else {
+            lua_pushlstring(L, value, length);
+        }
+    } else {
+        lua_pushlstring(L, value, length);
+    }
 }

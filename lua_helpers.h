@@ -63,3 +63,21 @@ int yl_lua_execute_lua(lua_State *L, const char *buf);
  * On return, leaves one return value or error message on the Lua stack.
  */
 int yl_lua_execute_lua_function(lua_State *L, const char *fnname, int nargs);
+
+typedef struct _yl_lua_table_builder_s {
+    lua_State *L;
+    int table_index;
+    bool is_mapping;
+    long int sequence_index; // Also used to track alternating keys/values in mappings.
+    struct _yl_lua_table_builder_s *parent;
+} yl_lua_table_builder_t;
+
+/**
+ * Event consumer to help build a table (either from a sequence or a mapping).
+ */
+int yl_lua_table_builder(yl_lua_table_builder_t *table_builder, yaml_event_t *event, lua_State *L, yl_error_t *err);
+
+/**
+ * Convert a plain scalar to a Lua value.
+ */
+void yl_lua_value_from_scalar(lua_State *L, yaml_scalar_style_t style, size_t length, char *value);

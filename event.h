@@ -26,6 +26,6 @@ void yl_event_record_delete(yl_event_record_t *event_record);
 
 int yl_replay_event(yl_event_record_t *event_record, yaml_event_t *event, yl_error_t *err);
 
-char *yl_render_event_record(yl_event_record_t *event_record, yl_error_t *err);
+char *yl_event_record_to_string(yl_event_record_t *event_record, yl_error_t *err);
 
 char *yl_copy_anchor(yaml_event_t *event);
