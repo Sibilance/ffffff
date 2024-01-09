@@ -210,6 +210,7 @@ error:
         tag = NULL;
     }
     yaml_event_delete(&next_event);
+    yaml_event_delete(event);
     return 0;
 }
 
@@ -317,16 +318,22 @@ error:
         tag = NULL;
     }
     yaml_event_delete(&next_event);
+    yaml_event_delete(event);
     return 0;
 }
 
 int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     int base = lua_gettop(ctx->lua);
+
+    size_t line = event->start_mark.line;
+    size_t column = event->start_mark.column;
     yaml_scalar_style_t style = event->data.scalar.style;
-    if (!event->data.scalar.tag ||
-        event->data.scalar.tag[0] != '!' ||
-        event->data.scalar.tag[1] == '!') {
+    char *tag = NULL;
+    if (event->data.scalar.tag)
+        tag = (char *)event->data.scalar.tag;
+
+    if (!tag || tag[0] != '!' || tag[1] == '!') {
         if (!ctx->consumer.callback(ctx->consumer.data, event, NULL, &ctx->err))
             goto error;
 
@@ -334,17 +341,10 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     }
 
     // Ensure room for the scalar value, and executing lua functions.
-    if (!lua_checkstack(ctx->lua, 10)) {
-        ctx->err.type = YL_MEMORY_ERROR;
-        ctx->err.line = event->start_mark.line;
-        ctx->err.column = event->start_mark.column;
-        ctx->err.context = "While executing a scalar, encountered an error";
-        ctx->err.message = "could not expand Lua stack space";
-        goto error;
-    }
+    if (!lua_checkstack(ctx->lua, 10))
+        goto memory_error;
 
     int status = LUA_OK;
-    char *tag = (char *)event->data.scalar.tag;
     char *value = (char *)event->data.scalar.value;
     size_t length = event->data.scalar.length;
     if (strcmp(tag, "!") == 0) {
@@ -373,7 +373,16 @@ int yl_execute_scalar(yl_execution_context_t *ctx, yaml_event_t *event)
     lua_settop(ctx->lua, base);
     return 1;
 
+memory_error:
+    ctx->err.type = YL_MEMORY_ERROR;
+    ctx->err.line = line;
+    ctx->err.column = column;
+    ctx->err.context = "While executing a scalar, encountered an error";
+    ctx->err.message = "could not expand Lua stack space";
+    goto error;
+
 error:
     // Don't reset the stack on error, as it may contain an error message.
+    yaml_event_delete(event);
     return 0;
 }
