@@ -36,3 +36,11 @@ table
 - bar
 ---
 table
+
+---
+!
+foo: bar
+baz: bip
+---
+baz: bip
+foo: bar
