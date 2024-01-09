@@ -110,6 +110,23 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 {
     yaml_event_t next_event = {0};
 
+    char *tag = NULL;
+    size_t line = event->start_mark.line;
+    size_t column = event->start_mark.column;
+    yl_event_consumer_t saved_consumer = {0};
+    yl_lua_table_builder_t table_builder = {0};
+
+    if (event->data.sequence_start.tag &&
+        event->data.sequence_start.tag[0] == '!' &&
+        event->data.sequence_start.tag[1] != '!') {
+
+        tag = strdup((char *)event->data.sequence_start.tag + 1);
+        saved_consumer = ctx->consumer;
+        table_builder.L = ctx->lua;
+        ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_lua_table_builder;
+        ctx->consumer.data = &table_builder;
+    }
+
     // Ensure room for executing lua functions.
     if (!lua_checkstack(ctx->lua, 10)) {
         ctx->err.type = YL_MEMORY_ERROR;
@@ -157,9 +174,37 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 
         yaml_event_delete(&next_event);
     }
+
+    if (saved_consumer.callback != NULL)
+        ctx->consumer = saved_consumer;
+
+    if (tag != NULL) {
+        int status = yl_lua_execute_lua_function(ctx->lua, tag, 1);
+        free(tag);
+        tag = NULL;
+
+        if (status != LUA_OK) {
+            ctx->err.type = yl_error_from_lua_error(status);
+            ctx->err.line = line;
+            ctx->err.column = column;
+            ctx->err.context = "While executing a sequence, encountered an error";
+            ctx->err.message = lua_tostring(ctx->lua, 1);
+            goto error;
+        }
+
+        if (!ctx->consumer.callback(ctx->consumer.data, event, ctx->lua, &ctx->err))
+            goto error;
+    }
+
     return 1;
 
 error:
+    if (saved_consumer.callback != NULL)
+        ctx->consumer = saved_consumer;
+    if (tag != NULL) {
+        free(tag);
+        tag = NULL;
+    }
     yaml_event_delete(&next_event);
     return 0;
 }
@@ -177,6 +222,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
     if (event->data.mapping_start.tag &&
         event->data.mapping_start.tag[0] == '!' &&
         event->data.mapping_start.tag[1] != '!') {
+
         tag = strdup((char *)event->data.mapping_start.tag + 1);
         saved_consumer = ctx->consumer;
         table_builder.L = ctx->lua;
@@ -238,6 +284,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
     if (tag != NULL) {
         int status = yl_lua_execute_lua_function(ctx->lua, tag, 1);
         free(tag);
+        tag = NULL;
 
         if (status != LUA_OK) {
             ctx->err.type = yl_error_from_lua_error(status);
@@ -257,6 +304,10 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 error:
     if (saved_consumer.callback != NULL)
         ctx->consumer = saved_consumer;
+    if (tag != NULL) {
+        free(tag);
+        tag = NULL;
+    }
     yaml_event_delete(&next_event);
     return 0;
 }

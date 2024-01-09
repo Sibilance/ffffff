@@ -253,9 +253,7 @@ int yl_lua_table_builder(yl_lua_table_builder_t *table_builder, yaml_event_t *ev
                 goto error;
 
         lua_newtable(L);
-        if (event->type == YAML_MAPPING_START_EVENT) {
-            table_builder->is_mapping = true;
-        }
+        table_builder->is_mapping = event->type == YAML_MAPPING_START_EVENT;
         table_builder->table_index = lua_gettop(L);
         break;
     case YAML_MAPPING_END_EVENT: // Fall through.
@@ -265,10 +263,15 @@ int yl_lua_table_builder(yl_lua_table_builder_t *table_builder, yaml_event_t *ev
         lua_settop(L, table_builder->table_index);
 
         if (table_builder->parent != NULL) {
-            // If this was a nested table, back out to the parent table builder.
+            // If this was a nested table, back out to the parent table builder
+            // and add this table as a member of the parent by falling through
+            // to the "scalar" case.
             yl_lua_table_builder_t *parent = table_builder->parent;
             *table_builder = *parent;
             free(parent);
+        } else {
+            // If it's not a nested table, we're done.
+            break;
         }
         // Fall through.
     case YAML_SCALAR_EVENT:

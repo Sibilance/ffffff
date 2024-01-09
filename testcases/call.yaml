@@ -29,3 +29,10 @@ reward
 foo: bar
 ---
 table
+
+---
+!type
+- foo
+- bar
+---
+table
