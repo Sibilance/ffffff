@@ -72,7 +72,6 @@ int yl_test_stream(yl_execution_context_t *ctx)
                 }
 
                 if (strcmp(actual_rendering, expected_rendering) != 0) {
-                    fprintf(stderr, "%s\n%s\n", actual_rendering, expected_rendering);
                     ctx->err.type = YL_ASSERTION_ERROR;
                     ctx->err.line = line;
                     ctx->err.column = column;
