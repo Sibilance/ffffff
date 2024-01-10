@@ -90,8 +90,18 @@ int yl_test_stream(yl_execution_context_t *ctx)
             }
         } break;
         case YAML_STREAM_END_EVENT:
+            if (!recording_actual) {
+                ctx->err.type = YL_EXECUTION_ERROR;
+                ctx->err.line = next_event.start_mark.line;
+                ctx->err.column = next_event.start_mark.column;
+                ctx->err.context = "While testing a stream, got test case but no expected output";
+                ctx->err.message = yl_event_name(next_event.type);
+                goto error;
+            }
+
             if (!ctx->consumer.callback(ctx->consumer.data, &next_event, NULL, &ctx->err))
                 goto error;
+
             done = true;
             break;
         default:
