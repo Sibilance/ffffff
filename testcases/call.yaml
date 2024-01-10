@@ -70,3 +70,14 @@ bip:
 foo:
   - bar
   - baz
+
+---
+!
+outer:
+  middle:
+    inner:
+      "hello world"
+---
+outer:
+  middle:
+    inner: hello world
