@@ -44,3 +44,29 @@ baz: bip
 ---
 baz: bip
 foo: bar
+
+---
+!
+- foo
+- bar
+- baz
+---
+- foo
+- bar
+- baz
+
+---
+!
+foo:
+  - bar
+  - baz
+bip:
+  - bop
+  - bup
+---
+bip:
+  - bop
+  - bup
+foo:
+  - bar
+  - baz
