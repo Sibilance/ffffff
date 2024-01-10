@@ -1,0 +1,71 @@
+---
+!
+foo: bar
+baz: bip
+---
+baz: bip
+foo: bar
+
+---
+!
+- foo
+- bar
+- baz
+---
+- foo
+- bar
+- baz
+
+---
+!
+foo:
+  - bar
+  - baz
+bip:
+  - bop
+  - bup
+---
+bip:
+  - bop
+  - bup
+foo:
+  - bar
+  - baz
+
+---
+!
+outer:
+  middle:
+    inner:
+      "hello world"
+---
+outer:
+  middle:
+    inner: hello world
+
+---
+!
+1: one
+2: two
+3: three
+---
+- one
+- two
+- three
+
+---
+!
+2: two
+3: three
+n: 4
+---
+- ~
+- two
+- three
+- ~
+
+---
+!
+{}
+---
+[]
