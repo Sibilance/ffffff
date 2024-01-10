@@ -91,3 +91,14 @@ outer:
 - one
 - two
 - three
+
+---
+!
+2: two
+3: three
+n: 4
+---
+- ~
+- two
+- three
+- ~
