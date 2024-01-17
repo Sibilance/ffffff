@@ -17,7 +17,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
     yl_event_record_t expected_events = {0};
     char *expected_rendering = NULL, *actual_rendering = NULL;
 
-    if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+    if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
         goto error;
 
     if (next_event.type != YAML_STREAM_START_EVENT) {
@@ -33,7 +33,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
         goto error;
 
     while (true) {
-        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+        if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
             goto error;
 
         size_t line = next_event.start_mark.line;
@@ -58,7 +58,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
 
         switch (next_event.type) {
         case YAML_DOCUMENT_START_EVENT:
-            if (!yl_test_record_document(ctx, &next_event, &actual_events))
+            if (!yl_test_record_document(ctx, &next_event, &actual_events, true))
                 goto error;
             break;
 
@@ -77,6 +77,22 @@ int yl_test_stream(yl_execution_context_t *ctx)
         }
 
         if (is_parameterized) {
+            yl_event_record_delete(&actual_events);
+
+            if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
+                goto error;
+
+            if (next_event.type != YAML_DOCUMENT_START_EVENT) {
+                ctx->err.type = YL_PARSER_ERROR;
+                ctx->err.line = next_event.start_mark.line;
+                ctx->err.column = next_event.start_mark.column;
+                ctx->err.context = "While trying to read a document, got unexpected event";
+                ctx->err.message = yl_event_name(next_event.type);
+                goto error;
+            }
+
+            if (!yl_test_record_document(ctx, &next_event, &actual_events, false))
+                goto error;
             fprintf(stderr, "IT'S PARAMETERIZED!!!\n");
         }
 
@@ -88,12 +104,12 @@ int yl_test_stream(yl_execution_context_t *ctx)
                 goto error;
         }
 
-        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+        if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
             goto error;
 
         switch (next_event.type) {
         case YAML_DOCUMENT_START_EVENT:
-            if (!yl_test_record_document(ctx, &next_event, &expected_events))
+            if (!yl_test_record_document(ctx, &next_event, &expected_events, true))
                 goto error;
             break;
 
@@ -144,15 +160,20 @@ error:
     return 0;
 }
 
-int yl_test_record_document(yl_execution_context_t *ctx, yaml_event_t *next_event, yl_event_record_t *event_record)
+int yl_test_record_document(yl_execution_context_t *ctx, yaml_event_t *next_event, yl_event_record_t *event_record, bool execute)
 {
     yl_event_consumer_t saved_consumer = ctx->consumer;
 
     ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_record_event;
     ctx->consumer.data = event_record;
 
-    if (!yl_execute_document(ctx, next_event))
-        goto error;
+    if (execute) {
+        if (!yl_execute_document(ctx, next_event))
+            goto error;
+    } else {
+        if (!yl_test_passthrough_document(ctx, next_event))
+            goto error;
+    }
 
     ctx->consumer = saved_consumer;
     yaml_event_delete(next_event);
@@ -163,6 +184,29 @@ error:
     ctx->consumer = saved_consumer;
     yaml_event_delete(next_event);
 
+    return 0;
+}
+
+int yl_test_passthrough_document(yl_execution_context_t *ctx, yaml_event_t *next_event)
+{
+    if (!ctx->consumer.callback(ctx->consumer.data, next_event, NULL, &ctx->err))
+        goto error;
+
+    bool done = false;
+    while (!done) {
+        if (!ctx->producer.callback(ctx->producer.data, next_event, &ctx->err))
+            goto error;
+
+        if (next_event->type == YAML_DOCUMENT_END_EVENT)
+            done = true;
+
+        if (!ctx->consumer.callback(ctx->consumer.data, next_event, NULL, &ctx->err))
+            goto error;
+    }
+
+    return 1;
+
+error:
     return 0;
 }
 

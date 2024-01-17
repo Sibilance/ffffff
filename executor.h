@@ -17,7 +17,12 @@
  * @returns On success, the producer should return @c 1. If the producer failed,
  * the returned value should be @c 0.
  */
-typedef int yl_event_producer_t(void *data, yaml_event_t *event, yl_error_t *err);
+typedef int yl_event_producer_callback_t(void *data, yaml_event_t *event, yl_error_t *err);
+
+typedef struct _yl_event_producer_s {
+    yl_event_producer_callback_t *callback;
+    void *data;
+} yl_event_producer_t;
 
 /**
  * The prototype of an event consumer.
@@ -43,8 +48,7 @@ typedef struct _yl_event_consumer_s {
 } yl_event_consumer_t;
 
 typedef struct _yl_execution_context_s {
-    yl_event_producer_t *producer;
-    void *producer_data;
+    yl_event_producer_t producer;
     lua_State *lua;
     yl_event_consumer_t consumer;
     yl_error_t err;

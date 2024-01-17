@@ -15,7 +15,7 @@ int yl_execute_stream(yl_execution_context_t *ctx)
 
     bool done = false;
     while (!done) {
-        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+        if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
             goto error;
 
         switch (next_event.type) {
@@ -64,7 +64,7 @@ int yl_execute_document(yl_execution_context_t *ctx, yaml_event_t *event)
 
     bool done = false;
     while (!done) {
-        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+        if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
             goto error;
 
         switch (next_event.type) {
@@ -135,7 +135,7 @@ int yl_execute_sequence(yl_execution_context_t *ctx, yaml_event_t *event)
 
     bool done = false;
     while (!done) {
-        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+        if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
             goto error;
 
         switch (next_event.type) {
@@ -243,7 +243,7 @@ int yl_execute_mapping(yl_execution_context_t *ctx, yaml_event_t *event)
 
     bool done = false;
     while (!done) {
-        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+        if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
             goto error;
 
         switch (next_event.type) {

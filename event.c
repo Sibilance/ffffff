@@ -199,8 +199,8 @@ char *yl_event_record_to_string(yl_event_record_t *event_record, yl_error_t *err
             err->type = YL_EMITTER_ERROR;
             err->line = event.start_mark.line;
             err->column = event.start_mark.column;
-            err->context = "Error rendering event record";
-            err->message = "failed to emit event";
+            err->context = "While rendering event record, failed to emit event";
+            err->message = yl_event_name(event.type);
             goto error;
         }
     }
