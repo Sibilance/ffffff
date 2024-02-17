@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "lauxlib.h"
 #include "lua.h"
 #include "yaml.h"
 
@@ -16,7 +17,7 @@ int yl_test_stream(yl_execution_context_t *ctx)
     yl_event_record_t expected_events = {0};
     char *expected_rendering = NULL, *actual_rendering = NULL;
 
-    if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+    if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
         goto error;
 
     if (next_event.type != YAML_STREAM_START_EVENT) {
@@ -32,18 +33,33 @@ int yl_test_stream(yl_execution_context_t *ctx)
         goto error;
 
     while (true) {
-        size_t line = 0, column = 0;
-        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+        if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
             goto error;
+
+        size_t line = next_event.start_mark.line;
+        size_t column = next_event.start_mark.column;
+
+        if (!lua_checkstack(ctx->lua, 10)) {
+            ctx->err.type = YL_MEMORY_ERROR;
+            ctx->err.line = line;
+            ctx->err.column = column;
+            ctx->err.context = "While trying to run a testcase, encountered an error";
+            ctx->err.message = "could not expand Lua stack space";
+            goto error;
+        }
+
+        bool is_parameterized = false;
+        lua_pushlightuserdata(ctx->lua, &is_parameterized);
+        lua_pushnil(ctx->lua); // Second upvalue is nil, replaced by Lua table on first call.
+        lua_pushcclosure(ctx->lua, yl_test_testcase, 2);
+        lua_pushvalue(ctx->lua, -1); // Duplicate the closure so it is not consumed when setting global.
+        lua_setglobal(ctx->lua, "testcases");
+        // -1: yl_test_testcase closure
 
         switch (next_event.type) {
         case YAML_DOCUMENT_START_EVENT:
-            line = next_event.start_mark.line;
-            column = next_event.start_mark.column;
-
-            if (!yl_test_record_document(ctx, &next_event, &actual_events))
+            if (!yl_test_record_document(ctx, &next_event, &actual_events, true))
                 goto error;
-
             break;
 
         case YAML_STREAM_END_EVENT:
@@ -60,6 +76,26 @@ int yl_test_stream(yl_execution_context_t *ctx)
             goto error;
         }
 
+        if (is_parameterized) {
+            yl_event_record_delete(&actual_events);
+
+            if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
+                goto error;
+
+            if (next_event.type != YAML_DOCUMENT_START_EVENT) {
+                ctx->err.type = YL_PARSER_ERROR;
+                ctx->err.line = next_event.start_mark.line;
+                ctx->err.column = next_event.start_mark.column;
+                ctx->err.context = "While trying to read a document, got unexpected event";
+                ctx->err.message = yl_event_name(next_event.type);
+                goto error;
+            }
+
+            if (!yl_test_record_document(ctx, &next_event, &actual_events, false))
+                goto error;
+            fprintf(stderr, "IT'S PARAMETERIZED!!!\n");
+        }
+
         actual_rendering = yl_event_record_to_string(&actual_events, &ctx->err);
         if (actual_rendering == NULL)
             goto error;
@@ -68,12 +104,12 @@ int yl_test_stream(yl_execution_context_t *ctx)
                 goto error;
         }
 
-        if (!ctx->producer(ctx->producer_data, &next_event, &ctx->err))
+        if (!ctx->producer.callback(ctx->producer.data, &next_event, &ctx->err))
             goto error;
 
         switch (next_event.type) {
         case YAML_DOCUMENT_START_EVENT:
-            if (!yl_test_record_document(ctx, &next_event, &expected_events))
+            if (!yl_test_record_document(ctx, &next_event, &expected_events, true))
                 goto error;
             break;
 
@@ -124,15 +160,20 @@ error:
     return 0;
 }
 
-int yl_test_record_document(yl_execution_context_t *ctx, yaml_event_t *next_event, yl_event_record_t *event_record)
+int yl_test_record_document(yl_execution_context_t *ctx, yaml_event_t *next_event, yl_event_record_t *event_record, bool execute)
 {
     yl_event_consumer_t saved_consumer = ctx->consumer;
 
     ctx->consumer.callback = (yl_event_consumer_callback_t *)yl_record_event;
     ctx->consumer.data = event_record;
 
-    if (!yl_execute_document(ctx, next_event))
-        goto error;
+    if (execute) {
+        if (!yl_execute_document(ctx, next_event))
+            goto error;
+    } else {
+        if (!yl_test_passthrough_document(ctx, next_event))
+            goto error;
+    }
 
     ctx->consumer = saved_consumer;
     yaml_event_delete(next_event);
@@ -143,5 +184,46 @@ error:
     ctx->consumer = saved_consumer;
     yaml_event_delete(next_event);
 
+    return 0;
+}
+
+int yl_test_passthrough_document(yl_execution_context_t *ctx, yaml_event_t *next_event)
+{
+    if (!ctx->consumer.callback(ctx->consumer.data, next_event, NULL, &ctx->err))
+        goto error;
+
+    bool done = false;
+    while (!done) {
+        if (!ctx->producer.callback(ctx->producer.data, next_event, &ctx->err))
+            goto error;
+
+        if (next_event->type == YAML_DOCUMENT_END_EVENT)
+            done = true;
+
+        if (!ctx->consumer.callback(ctx->consumer.data, next_event, NULL, &ctx->err))
+            goto error;
+    }
+
+    return 1;
+
+error:
+    return 0;
+}
+
+int yl_test_testcase(lua_State *L)
+{
+    fprintf(stderr, "yl_test_testcase\n");
+    luaL_checktype(L, lua_upvalueindex(1), LUA_TLIGHTUSERDATA);
+    bool *is_parameterized = lua_touserdata(L, lua_upvalueindex(1));
+
+    if (!*is_parameterized) {
+        luaL_checktype(L, 1, LUA_TTABLE);
+
+        *is_parameterized = true;
+        lua_replace(L, lua_upvalueindex(2)); // Store table as upvalue.
+
+        lua_pushnil(L);
+        return 1;
+    }
     return 0;
 }

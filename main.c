@@ -171,8 +171,8 @@ int main(int argc, char *argv[])
     }
     yaml_parser_set_input_file(&parser, args.input);
 
-    ctx.producer = (yl_event_producer_t *)yl_parser_parse;
-    ctx.producer_data = &parser;
+    ctx.producer.callback = (yl_event_producer_callback_t *)yl_parser_parse;
+    ctx.producer.data = &parser;
 
     if (!yaml_emitter_initialize(&emitter)) {
         fprintf(stderr, "Error initializing emitter!\n");
