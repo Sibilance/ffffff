@@ -58,49 +58,31 @@ void ylt_event_error(ylt_context_t *ctx, const char *msg)
     luaL_error(ctx->L, "%I:%I: EVENT_ERROR: %s: %s", line, column, msg, ylt_yaml_event_names[ctx->event.type]);
 }
 
-void ylt_try_parse(ylt_context_t *ctx)
-{
-    if (!yaml_parser_parse(&ctx->parser, &ctx->event))
-        return ylt_parser_error(ctx);
-}
-
-void ylt_try_emit(ylt_context_t *ctx)
-{
-    yaml_event_type_t event_type = ctx->event.type;
-    if (!yaml_emitter_emit(&ctx->emitter, &ctx->event))
-        return ylt_emitter_error(ctx, ylt_yaml_event_names[event_type]);
-    ctx->event = (yaml_event_t){0}; // Event has been consumed (either deleted, or added to an internal libyaml queue).
-}
-
 void ylt_evaluate_stream(ylt_context_t *ctx)
 {
     if (ctx->event.type != YAML_NO_EVENT)
         return ylt_event_error(ctx, "Unexpected event already parsed when evaluating stream");
 
-    ylt_try_parse(ctx);
+    ylt_parse(ctx);
 
     if (ctx->event.type != YAML_STREAM_START_EVENT)
         return ylt_event_error(ctx, "Unexpected event at start of stream (expecting STREAM_START_EVENT)");
 
-    ylt_try_emit(ctx);
+    ylt_emit(ctx);
 
-    bool done = false;
-    while (!done) {
-        ylt_try_parse(ctx);
+    while (true) {
+        ylt_parse(ctx);
 
         switch (ctx->event.type) {
         case YAML_DOCUMENT_START_EVENT:
             ylt_evaluate_document(ctx);
             break;
         case YAML_STREAM_END_EVENT:
-            ylt_try_emit(ctx);
-            done = true;
-            break;
+            ylt_emit(ctx);
+            return;
         default:
             return ylt_event_error(ctx, "Unexpected event while processing stream");
         }
-
-        yaml_event_delete(&ctx->event);
     }
 }
 
@@ -109,5 +91,62 @@ void ylt_evaluate_document(ylt_context_t *ctx)
     if (ctx->event.type != YAML_DOCUMENT_START_EVENT)
         return ylt_event_error(ctx, "Unexpected event (expecting DOCUMENT_START_EVENT)");
 
-    ylt_try_emit(ctx); // TODO: do we need to buffer until we know whether to skip this document?
+    // Buffer the document start event in case the document content indicates it should be skipped.
+    ylt_buffer_event(ctx);
+
+    ylt_parse(ctx);
+
+    // If the next event has no Lua invocation tag, the content will be passed-through. Flush the buffer (output the
+    // DOCUMENT START EVENT) and continue processing.
+    // Otherwise, change to LUA OUTPUT MODE and continue processing. On return, check the Lua stack for the return value.
+    // If the return value is VOID, purge the buffer (discard the DOCUMENT START EVENT), restore EMIT OUTPUT MODE, and
+    // return. Otherwise, flush the buffer (output the DOCUMENT START EVENT), restore EMIT OUTPUT MODE, and then render
+    // the Lua value.
+
+    switch (ctx->event.type) {
+    case YAML_SEQUENCE_START_EVENT:
+        if (ylt_is_lua_invocation(ctx->event.data.sequence_start.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_flush_event_buffer(ctx);
+        ylt_evaluate_sequence(ctx);
+        break;
+    case YAML_MAPPING_START_EVENT:
+        if (ylt_is_lua_invocation(ctx->event.data.mapping_start.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_flush_event_buffer(ctx);
+        ylt_evaluate_mapping(ctx);
+        break;
+    case YAML_SCALAR_EVENT:
+        if (ylt_is_lua_invocation(ctx->event.data.scalar.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_flush_event_buffer(ctx);
+        ylt_evaluate_scalar(ctx);
+        break;
+    default:
+        return ylt_event_error(ctx, "Unexpected event while processing document");
+    }
+
+    ylt_parse(ctx);
+    if (ctx->event.type != YAML_DOCUMENT_END_EVENT)
+        return ylt_event_error(ctx, "Unexpected event (expecting DOCUMENT_END_EVENT)");
+
+    // If we were in LUA OUTPUT MODE, this was a Lua invocation. Restore the output mode to EMITTER OUTPUT MODE.
+    // Evaluate the Lua invocation and check the stack for the return value. If the return value is VOID, purge the
+    // buffer (discard the DOCUMENT START EVENT) and return (skipping the document). Otherwise, flush the buffer
+    // (output the DOCUMENT START EVENT) and then render the Lua value.
+    if (ctx->output_mode == YLT_LUA_OUTPUT_MODE) {
+        ctx->output_mode = YLT_EMITTER_OUTPUT_MODE;
+        ylt_evaluate_lua(ctx);
+        if (ylt_lua_value_is_void(ctx)) {
+            ylt_truncate_event_buffer(ctx, 0);
+            yaml_event_delete(&ctx->event); // Discard DOCUMENT END EVENT as well.
+        } else {
+            ylt_flush_event_buffer(ctx);
+            ylt_render_lua_value(ctx);
+            ylt_emit(ctx); // Output DOCUMENT END EVENT.
+        }
+    }
 }
