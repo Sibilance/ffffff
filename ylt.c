@@ -101,7 +101,7 @@ void ylt_evaluate_stream(ylt_context_t *ctx)
 
 void ylt_evaluate_document(ylt_context_t *ctx)
 {
-    if (ctx->event.type != YAML_DOCUMENT_START_EVENT)
+    if (ylt_unlikely(ctx->event.type != YAML_DOCUMENT_START_EVENT))
         return ylt_event_error(ctx, "Unexpected event (expecting DOCUMENT_START_EVENT)");
 
     ylt_output_mode_t initial_output_mode = ctx->output_mode;
@@ -171,12 +171,134 @@ void ylt_evaluate_document(ylt_context_t *ctx)
         ylt_emit(ctx); // Output DOCUMENT END EVENT.
 }
 
+// TODO: possibly this can replace the body of ylt_evaluate_document() if made generic enough
+void ylt_evaluate_nested(ylt_context_t *ctx, yaml_event_type_t expected_start_event, yaml_event_type_t expected_end_event)
+{
+    if (ylt_unlikely(ctx->event.type != expected_start_event))
+        return ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event (expecting %s)",
+                                                    ylt_yaml_event_names[expected_start_event]));
+
+    ylt_output_mode_t initial_output_mode = ctx->output_mode;
+    size_t initial_buffer_len = ctx->event_buffer.len;
+
+    // Buffer the current START event in case the nested content indicates it should be skipped.
+    ylt_buffer_event(ctx);
+
+    ylt_parse(ctx);
+
+    // If the next event has no Lua invocation tag, the content will be passed-through. Flush the buffer (output the
+    // START event) and continue processing.
+    // Otherwise, change to LUA OUTPUT MODE and continue processing. On return, check the Lua stack for the return value.
+    // If the return value is VOID, purge the buffer (discard the START event), restore the initial output mode, and
+    // return. Otherwise, flush the buffer (output the START event), restore the initial output mode, render the Lua
+    // value, and continue processing.
+
+    bool is_lua_invocation = false;
+    switch (ctx->event.type) {
+    case YAML_SEQUENCE_START_EVENT:
+        if (is_lua_invocation = ylt_is_lua_invocation(ctx->event.data.sequence_start.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_playback_event_buffer(ctx);
+        ylt_evaluate_sequence(ctx);
+        break;
+    case YAML_MAPPING_START_EVENT:
+        if (is_lua_invocation = ylt_is_lua_invocation(ctx->event.data.mapping_start.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_playback_event_buffer(ctx);
+        ylt_evaluate_mapping(ctx);
+        break;
+    case YAML_SCALAR_EVENT:
+        if (is_lua_invocation = ylt_is_lua_invocation(ctx->event.data.scalar.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_playback_event_buffer(ctx);
+        ylt_evaluate_scalar(ctx);
+        break;
+    case YAML_ALIAS_EVENT:
+        ylt_playback_event_buffer(ctx);
+        ylt_emit(ctx);
+        break;
+    default:
+        return ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event while processing %s",
+                                                    ylt_yaml_event_names[expected_start_event]));
+    }
+
+    // If this was a Lua invocation, restore the output mode to initial_output_mode.
+    // Evaluate the Lua invocation and check the stack for the return value. If the return value is VOID, purge the
+    // buffer (discard the START event) and return (skipping the document). Otherwise, flush the buffer (output the
+    // START event) and then render the Lua value.
+    bool discard_event_end = false;
+    if (is_lua_invocation) {
+        ctx->output_mode = initial_output_mode;
+        ylt_evaluate_lua(ctx);
+        if (ylt_unlikely(ylt_lua_value_is_void(ctx))) {
+            ylt_truncate_event_buffer(ctx, initial_buffer_len);
+            discard_event_end = true;
+        } else {
+            ylt_playback_event_buffer(ctx);
+            ylt_render_lua_value(ctx);
+        }
+    }
+
+    ylt_parse(ctx); // Expect END event.
+    if (ylt_unlikely(ctx->event.type != expected_end_event))
+        return ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event (expecting %s)",
+                                                    ylt_yaml_event_names[expected_end_event]));
+    if (ylt_unlikely(discard_event_end))
+        yaml_event_delete(&ctx->event);
+    else
+        ylt_emit(ctx); // Output END event.
+}
+
+void ylt_evaluate_sequence(ylt_context_t *ctx)
+{
+    if (ylt_unlikely(ctx->event.type != YAML_SEQUENCE_START_EVENT))
+        return ylt_event_error(ctx, "Unexpected event (expecting YAML_SEQUENCE_START_EVENT)");
+
+    ylt_emit(ctx);
+
+    for (ylt_parse(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse(ctx)) {
+        switch (ctx->event.type) {
+        case YAML_SEQUENCE_START_EVENT:
+            ylt_evaluate_sequence(ctx);
+            break;
+        case YAML_MAPPING_START_EVENT:
+            ylt_evaluate_mapping(ctx);
+            break;
+        case YAML_SCALAR_EVENT:
+            ylt_evaluate_scalar(ctx);
+            break;
+        case YAML_ALIAS_EVENT:
+            ylt_emit(ctx);
+            break;
+        default:
+            return ylt_event_error(ctx, "Unexpected event while processing sequence");
+        }
+    }
+
+    // TODO: left off here
+}
+
+void ylt_evaluate_mapping(ylt_context_t *ctx)
+{
+    if (ylt_unlikely(ctx->event.type != YAML_MAPPING_START_EVENT))
+        return ylt_event_error(ctx, "Unexpected event (expecting YAML_MAPPING_START_EVENT)");
+}
+
+void ylt_evaluate_scalar(ylt_context_t *ctx)
+{
+    if (ylt_unlikely(ctx->event.type != YAML_SCALAR_EVENT))
+        return ylt_event_error(ctx, "Unexpected event (expecting YAML_SCALAR_EVENT)");
+}
+
 void ylt_buffer_event(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event_buffer.len == ctx->event_buffer.cap)) {
         ctx->event_buffer.cap = (ctx->event_buffer.cap << 1) || 2;
         yaml_event_t *bigger_events = realloc(ctx->event_buffer.events, ctx->event_buffer.cap * sizeof(yaml_event_t));
-        if (bigger_events == NULL) // Memory allocation failed. Original buffer was not freed.
+        if (ylt_unlikely(bigger_events == NULL)) // Memory allocation failed. Original buffer was not freed.
             ylt_event_error(ctx, "Failed to allocate event buffer");
         ctx->event_buffer.events = bigger_events;
     }

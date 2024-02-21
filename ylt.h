@@ -48,6 +48,7 @@ void ylt_event_error(ylt_context_t *ctx, const char *msg);
 
 void ylt_evaluate_stream(ylt_context_t *ctx);
 void ylt_evaluate_document(ylt_context_t *ctx);
+void ylt_evaluate_nested(ylt_context_t *ctx, yaml_event_type_t expected_start_event, yaml_event_type_t expected_end_event);
 void ylt_evaluate_sequence(ylt_context_t *ctx);
 void ylt_evaluate_mapping(ylt_context_t *ctx);
 void ylt_evaluate_scalar(ylt_context_t *ctx);
@@ -69,13 +70,22 @@ static inline void ylt_parse(ylt_context_t *ctx)
 
 static inline void ylt_emit(ylt_context_t *ctx)
 {
-    // TODO: take into account output mode
-    yaml_event_type_t event_type = ctx->event.type;
-    if (ylt_unlikely(!yaml_emitter_emit(&ctx->emitter, &ctx->event)))
-        return ylt_emitter_error(ctx, ylt_yaml_event_names[event_type]);
-    // Event has been consumed (either deleted, or copied (by value) to an internal libyaml queue).
-    // Mark it as empty.
-    ctx->event = (yaml_event_t){0};
+    switch (ctx->output_mode) {
+    case YLT_EMITTER_OUTPUT_MODE:
+        yaml_event_type_t event_type = ctx->event.type; // Save type since yaml_emitter_emit() consumes event.
+        if (ylt_unlikely(!yaml_emitter_emit(&ctx->emitter, &ctx->event)))
+            return ylt_emitter_error(ctx, ylt_yaml_event_names[event_type]);
+        // Event has been consumed (either deleted, or copied (by value) to an internal libyaml queue).
+        // Mark it as empty.
+        ctx->event = (yaml_event_t){0};
+        break;
+    case YLT_BUFFER_OUTPUT_MODE:
+        ylt_buffer_event(ctx);
+        break;
+    case YLT_LUA_OUTPUT_MODE:
+        // TODO: add to the current Lua object
+        break;
+    }
 }
 
 static inline bool ylt_is_lua_invocation(yaml_char_t *tag)
