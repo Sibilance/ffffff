@@ -115,8 +115,6 @@ static inline void ylt_evaluate_nested(ylt_context_t *ctx, char *processing_what
         ylt_evaluate_mapping(ctx);
         break;
     case YAML_SCALAR_EVENT:
-        ylt_evaluate_scalar(ctx);
-        break;
     case YAML_ALIAS_EVENT:
         ylt_emit(ctx);
         break;
@@ -257,13 +255,6 @@ void ylt_evaluate_mapping(ylt_context_t *ctx)
             }
         }
     }
-}
-
-
-void ylt_evaluate_scalar(ylt_context_t *ctx)
-{
-    if (ylt_unlikely(ctx->event.type != YAML_SCALAR_EVENT))
-        return ylt_event_error(ctx, "Unexpected event while reading scalar");
 }
 
 
