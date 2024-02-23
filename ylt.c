@@ -25,6 +25,7 @@ const char *ylt_yaml_event_names[] = {
     "MAPPING_END_EVENT",
 };
 
+
 void ylt_delete_context(ylt_context_t *ctx)
 {
     yaml_parser_delete(&ctx->parser);
@@ -38,6 +39,7 @@ void ylt_delete_context(ylt_context_t *ctx)
     *ctx = (ylt_context_t){0};
 }
 
+
 void ylt_parser_error(ylt_context_t *ctx)
 {
     luaL_error(ctx->L, "%I:%I: %s: %s: %s",
@@ -48,6 +50,7 @@ void ylt_parser_error(ylt_context_t *ctx)
                ctx->parser.problem);
 }
 
+
 void ylt_emitter_error(ylt_context_t *ctx, const char *msg)
 {
     luaL_error(ctx->L, "%I:%I: %s: %s: %s",
@@ -57,6 +60,7 @@ void ylt_emitter_error(ylt_context_t *ctx, const char *msg)
                msg,
                ctx->emitter.problem);
 }
+
 
 void ylt_event_error(ylt_context_t *ctx, const char *msg)
 {
@@ -70,6 +74,7 @@ void ylt_event_error(ylt_context_t *ctx, const char *msg)
     }
     luaL_error(ctx->L, "%I:%I: EVENT_ERROR: %s: %s", line, column, msg, ylt_yaml_event_names[ctx->event.type]);
 }
+
 
 void ylt_evaluate_stream(ylt_context_t *ctx)
 {
@@ -99,10 +104,47 @@ void ylt_evaluate_stream(ylt_context_t *ctx)
     }
 }
 
+
+static inline bool ylt_evaluate_nested(ylt_context_t *ctx, char *processing_what) // Returns was_lua_invocation.
+{
+    bool was_lua_invocation = false;
+    switch (ctx->event.type) {
+    case YAML_SEQUENCE_START_EVENT:
+        if (was_lua_invocation = ylt_is_lua_invocation(ctx->event.data.sequence_start.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_playback_event_buffer(ctx);
+        ylt_evaluate_sequence(ctx);
+        break;
+    case YAML_MAPPING_START_EVENT:
+        if (was_lua_invocation = ylt_is_lua_invocation(ctx->event.data.mapping_start.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_playback_event_buffer(ctx);
+        ylt_evaluate_mapping(ctx);
+        break;
+    case YAML_SCALAR_EVENT:
+        if (was_lua_invocation = ylt_is_lua_invocation(ctx->event.data.scalar.tag))
+            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+        else
+            ylt_playback_event_buffer(ctx);
+        ylt_evaluate_scalar(ctx);
+        break;
+    case YAML_ALIAS_EVENT:
+        ylt_playback_event_buffer(ctx);
+        ylt_emit(ctx);
+        break;
+    default:
+        ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event while processing %s", processing_what));
+    }
+    return was_lua_invocation;
+}
+
+
 void ylt_evaluate_document(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event.type != YAML_DOCUMENT_START_EVENT))
-        return ylt_event_error(ctx, "Unexpected event (expecting DOCUMENT_START_EVENT)");
+        return ylt_event_error(ctx, "Unexpected event at start of document");
 
     ylt_output_mode_t initial_output_mode = ctx->output_mode;
     size_t initial_buffer_len = ctx->event_buffer.len;
@@ -119,43 +161,18 @@ void ylt_evaluate_document(ylt_context_t *ctx)
     // and return. Otherwise, flush the buffer (output the DOCUMENT START EVENT), restore the initial output mode, render
     // the Lua value, and continue processing.
 
-    switch (ctx->event.type) {
-    case YAML_SEQUENCE_START_EVENT:
-        if (ylt_is_lua_invocation(ctx->event.data.sequence_start.tag))
-            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
-        else
-            ylt_playback_event_buffer(ctx);
-        ylt_evaluate_sequence(ctx);
-        break;
-    case YAML_MAPPING_START_EVENT:
-        if (ylt_is_lua_invocation(ctx->event.data.mapping_start.tag))
-            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
-        else
-            ylt_playback_event_buffer(ctx);
-        ylt_evaluate_mapping(ctx);
-        break;
-    case YAML_SCALAR_EVENT:
-        if (ylt_is_lua_invocation(ctx->event.data.scalar.tag))
-            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
-        else
-            ylt_playback_event_buffer(ctx);
-        ylt_evaluate_scalar(ctx);
-        break;
-    default:
-        return ylt_event_error(ctx, "Unexpected event while processing document");
-    }
+    bool was_lua_invocation = ylt_evaluate_nested(ctx, "document");
 
-    // If we were in LUA OUTPUT MODE, this was a Lua invocation. Restore the output mode to EMITTER OUTPUT MODE.
+    // If this was a Lua invocation, restore the output mode.
     // Evaluate the Lua invocation and check the stack for the return value. If the return value is VOID, purge the
     // buffer (discard the DOCUMENT START EVENT) and return (skipping the document). Otherwise, flush the buffer
     // (output the DOCUMENT START EVENT) and then render the Lua value.
     bool discard_document_end = false;
-    if (ctx->output_mode == YLT_LUA_OUTPUT_MODE) {
+    if (was_lua_invocation) {
         ctx->output_mode = initial_output_mode;
-        ylt_evaluate_lua(ctx);
-        if (ylt_unlikely(ylt_lua_value_is_void(ctx))) {
+        ylt_execute_lua(ctx);
+        if (discard_document_end = ylt_unlikely(ylt_lua_value_is_void(ctx))) {
             ylt_truncate_event_buffer(ctx, initial_buffer_len);
-            discard_document_end = true;
         } else {
             ylt_playback_event_buffer(ctx);
             ylt_render_lua_value(ctx);
@@ -164,122 +181,37 @@ void ylt_evaluate_document(ylt_context_t *ctx)
 
     ylt_parse(ctx); // Expect DOCUMENT END EVENT.
     if (ylt_unlikely(ctx->event.type != YAML_DOCUMENT_END_EVENT))
-        return ylt_event_error(ctx, "Unexpected event (expecting DOCUMENT_END_EVENT)");
+        return ylt_event_error(ctx, "Unexpected event at end of document");
     if (ylt_unlikely(discard_document_end))
         yaml_event_delete(&ctx->event);
     else
         ylt_emit(ctx); // Output DOCUMENT END EVENT.
 }
 
-// TODO: possibly this can replace the body of ylt_evaluate_document() if made generic enough
-void ylt_evaluate_nested(ylt_context_t *ctx, yaml_event_type_t expected_start_event, yaml_event_type_t expected_end_event)
-{
-    if (ylt_unlikely(ctx->event.type != expected_start_event))
-        return ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event (expecting %s)",
-                                                    ylt_yaml_event_names[expected_start_event]));
-
-    ylt_output_mode_t initial_output_mode = ctx->output_mode;
-    size_t initial_buffer_len = ctx->event_buffer.len;
-
-    // Buffer the current START event in case the nested content indicates it should be skipped.
-    ylt_buffer_event(ctx);
-
-    ylt_parse(ctx);
-
-    // If the next event has no Lua invocation tag, the content will be passed-through. Flush the buffer (output the
-    // START event) and continue processing.
-    // Otherwise, change to LUA OUTPUT MODE and continue processing. On return, check the Lua stack for the return value.
-    // If the return value is VOID, purge the buffer (discard the START event), restore the initial output mode, and
-    // return. Otherwise, flush the buffer (output the START event), restore the initial output mode, render the Lua
-    // value, and continue processing.
-
-    bool is_lua_invocation = false;
-    switch (ctx->event.type) {
-    case YAML_SEQUENCE_START_EVENT:
-        if (is_lua_invocation = ylt_is_lua_invocation(ctx->event.data.sequence_start.tag))
-            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
-        else
-            ylt_playback_event_buffer(ctx);
-        ylt_evaluate_sequence(ctx);
-        break;
-    case YAML_MAPPING_START_EVENT:
-        if (is_lua_invocation = ylt_is_lua_invocation(ctx->event.data.mapping_start.tag))
-            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
-        else
-            ylt_playback_event_buffer(ctx);
-        ylt_evaluate_mapping(ctx);
-        break;
-    case YAML_SCALAR_EVENT:
-        if (is_lua_invocation = ylt_is_lua_invocation(ctx->event.data.scalar.tag))
-            ctx->output_mode = YLT_LUA_OUTPUT_MODE;
-        else
-            ylt_playback_event_buffer(ctx);
-        ylt_evaluate_scalar(ctx);
-        break;
-    case YAML_ALIAS_EVENT:
-        ylt_playback_event_buffer(ctx);
-        ylt_emit(ctx);
-        break;
-    default:
-        return ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event while processing %s",
-                                                    ylt_yaml_event_names[expected_start_event]));
-    }
-
-    // If this was a Lua invocation, restore the output mode to initial_output_mode.
-    // Evaluate the Lua invocation and check the stack for the return value. If the return value is VOID, purge the
-    // buffer (discard the START event) and return (skipping the document). Otherwise, flush the buffer (output the
-    // START event) and then render the Lua value.
-    bool discard_event_end = false;
-    if (is_lua_invocation) {
-        ctx->output_mode = initial_output_mode;
-        ylt_evaluate_lua(ctx);
-        if (ylt_unlikely(ylt_lua_value_is_void(ctx))) {
-            ylt_truncate_event_buffer(ctx, initial_buffer_len);
-            discard_event_end = true;
-        } else {
-            ylt_playback_event_buffer(ctx);
-            ylt_render_lua_value(ctx);
-        }
-    }
-
-    ylt_parse(ctx); // Expect END event.
-    if (ylt_unlikely(ctx->event.type != expected_end_event))
-        return ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event (expecting %s)",
-                                                    ylt_yaml_event_names[expected_end_event]));
-    if (ylt_unlikely(discard_event_end))
-        yaml_event_delete(&ctx->event);
-    else
-        ylt_emit(ctx); // Output END event.
-}
 
 void ylt_evaluate_sequence(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event.type != YAML_SEQUENCE_START_EVENT))
-        return ylt_event_error(ctx, "Unexpected event (expecting YAML_SEQUENCE_START_EVENT)");
+        return ylt_event_error(ctx, "Unexpected event at start of sequence");
 
     ylt_emit(ctx);
 
     for (ylt_parse(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse(ctx)) {
-        switch (ctx->event.type) {
-        case YAML_SEQUENCE_START_EVENT:
-            ylt_evaluate_sequence(ctx);
-            break;
-        case YAML_MAPPING_START_EVENT:
-            ylt_evaluate_mapping(ctx);
-            break;
-        case YAML_SCALAR_EVENT:
-            ylt_evaluate_scalar(ctx);
-            break;
-        case YAML_ALIAS_EVENT:
-            ylt_emit(ctx);
-            break;
-        default:
-            return ylt_event_error(ctx, "Unexpected event while processing sequence");
+        ylt_output_mode_t initial_output_mode = ctx->output_mode;
+        bool was_lua_invocation = ylt_evaluate_nested(ctx, "sequence");
+        if (was_lua_invocation) {
+            ctx->output_mode = initial_output_mode;
+            ylt_execute_lua(ctx);
+            ylt_render_lua_value(ctx);
         }
     }
 
-    // TODO: left off here
+    ylt_parse(ctx); // Expect SEQUENCE END EVENT.
+    if (ylt_unlikely(ctx->event.type != YAML_SEQUENCE_END_EVENT))
+        return ylt_event_error(ctx, "Unexpected event at end of sequnece");
+    ylt_emit(ctx); // Output SEQUENCE END EVENT.
 }
+
 
 void ylt_evaluate_mapping(ylt_context_t *ctx)
 {
@@ -287,11 +219,13 @@ void ylt_evaluate_mapping(ylt_context_t *ctx)
         return ylt_event_error(ctx, "Unexpected event (expecting YAML_MAPPING_START_EVENT)");
 }
 
+
 void ylt_evaluate_scalar(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event.type != YAML_SCALAR_EVENT))
         return ylt_event_error(ctx, "Unexpected event (expecting YAML_SCALAR_EVENT)");
 }
+
 
 void ylt_buffer_event(ylt_context_t *ctx)
 {
@@ -306,6 +240,7 @@ void ylt_buffer_event(ylt_context_t *ctx)
     ctx->event_buffer.events[ctx->event_buffer.len++] = ctx->event;
     ctx->event = (yaml_event_t){0};
 }
+
 
 void ylt_playback_event_buffer(ylt_context_t *ctx)
 {
@@ -323,6 +258,7 @@ void ylt_playback_event_buffer(ylt_context_t *ctx)
 
     ctx->event_buffer.len = 0;
 }
+
 
 void ylt_truncate_event_buffer(ylt_context_t *ctx, size_t len)
 {

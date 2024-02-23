@@ -15,9 +15,11 @@
 #define ylt_unlikely(x) (!!(x))
 #endif
 
+
 const char *ylt_yaml_error_names[];
 const char *ylt_yaml_event_names[];
 const void *ylt_void_sentinel = &ylt_void_sentinel;
+
 
 typedef enum _ylt_output_mode_e {
     YLT_EMITTER_OUTPUT_MODE,
@@ -40,6 +42,7 @@ typedef struct _ylt_context_s {
     ylt_output_mode_t output_mode;
 } ylt_context_t;
 
+
 void ylt_delete_context(ylt_context_t *ctx);
 
 void ylt_parser_error(ylt_context_t *ctx);
@@ -48,7 +51,6 @@ void ylt_event_error(ylt_context_t *ctx, const char *msg);
 
 void ylt_evaluate_stream(ylt_context_t *ctx);
 void ylt_evaluate_document(ylt_context_t *ctx);
-void ylt_evaluate_nested(ylt_context_t *ctx, yaml_event_type_t expected_start_event, yaml_event_type_t expected_end_event);
 void ylt_evaluate_sequence(ylt_context_t *ctx);
 void ylt_evaluate_mapping(ylt_context_t *ctx);
 void ylt_evaluate_scalar(ylt_context_t *ctx);
@@ -57,8 +59,9 @@ void ylt_buffer_event(ylt_context_t *ctx);
 void ylt_playback_event_buffer(ylt_context_t *ctx);
 void ylt_truncate_event_buffer(ylt_context_t *ctx, size_t len);
 
-void ylt_evaluate_lua(ylt_context_t *ctx);
+void ylt_execute_lua(ylt_context_t *ctx);
 void ylt_render_lua_value(ylt_context_t *ctx);
+
 
 static inline void ylt_parse(ylt_context_t *ctx)
 {
@@ -67,6 +70,7 @@ static inline void ylt_parse(ylt_context_t *ctx)
     if (ylt_unlikely(!yaml_parser_parse(&ctx->parser, &ctx->event)))
         return ylt_parser_error(ctx);
 }
+
 
 static inline void ylt_emit(ylt_context_t *ctx)
 {
@@ -88,10 +92,12 @@ static inline void ylt_emit(ylt_context_t *ctx)
     }
 }
 
+
 static inline bool ylt_is_lua_invocation(yaml_char_t *tag)
 {
     return ylt_unlikely(tag) && ylt_likely(tag[0] == '!') && ylt_unlikely(tag[1] != '!');
 }
+
 
 static inline bool ylt_lua_value_is_void(ylt_context_t *ctx)
 {
