@@ -56,6 +56,8 @@ void ylt_evaluate_sequence(ylt_context_t *ctx);
 void ylt_evaluate_mapping(ylt_context_t *ctx);
 void ylt_evaluate_scalar(ylt_context_t *ctx);
 
+void ylt_discard_nested(ylt_context_t *ctx);
+
 void ylt_buffer_event(ylt_context_t *ctx);
 void ylt_playback_event_buffer(ylt_context_t *ctx, size_t since);
 void ylt_truncate_event_buffer(ylt_context_t *ctx, size_t since);

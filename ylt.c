@@ -267,6 +267,24 @@ void ylt_evaluate_scalar(ylt_context_t *ctx)
 }
 
 
+void ylt_discard_nested(ylt_context_t *ctx)
+{
+    yaml_event_type_t event_type = ctx->event.type;
+    yaml_event_delete(&ctx->event);
+
+    switch (event_type) {
+    case YAML_SEQUENCE_START_EVENT:
+        for (ylt_parse(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse(ctx))
+            ylt_discard_nested(ctx);
+        break;
+    case YAML_MAPPING_START_EVENT:
+        for (ylt_parse(ctx); ctx->event.type != YAML_MAPPING_END_EVENT; ylt_parse(ctx))
+            ylt_discard_nested(ctx);
+        break;
+    }
+}
+
+
 void ylt_buffer_event(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event_buffer.len == ctx->event_buffer.cap)) {
