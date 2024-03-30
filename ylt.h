@@ -63,6 +63,7 @@ void ylt_truncate_event_buffer(ylt_context_t *ctx, size_t since);
 
 void ylt_execute_lua(ylt_context_t *ctx);
 void ylt_render_lua_value(ylt_context_t *ctx);
+void ylt_discard_lua_value(ylt_context_t *ctx);
 
 
 static inline void ylt_parse(ylt_context_t *ctx)
@@ -98,22 +99,24 @@ static inline void ylt_emit(ylt_context_t *ctx)
 }
 
 
-static inline bool ylt_is_lua_invocation(ylt_context_t *ctx)
+static inline const char *ylt_event_tag(ylt_context_t *ctx)
 {
-    yaml_char_t *tag = NULL;
     switch (ctx->event.type) {
     case YAML_SEQUENCE_START_EVENT:
-        tag = ctx->event.data.sequence_start.tag;
-        break;
+        return (const char *)ctx->event.data.sequence_start.tag;
     case YAML_MAPPING_START_EVENT:
-        tag = ctx->event.data.mapping_start.tag;
-        break;
+        return (const char *)ctx->event.data.mapping_start.tag;
     case YAML_SCALAR_EVENT:
-        tag = ctx->event.data.scalar.tag;
-        break;
+        return (const char *)ctx->event.data.scalar.tag;
     default:
-        return false;
+        return NULL;
     }
+}
+
+
+static inline bool ylt_is_lua_invocation(ylt_context_t *ctx)
+{
+    const char *tag = ylt_event_tag(ctx);
     return ylt_unlikely(tag) && ylt_likely(tag[0] == '!') && ylt_unlikely(tag[1] != '!');
 }
 

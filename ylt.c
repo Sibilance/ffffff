@@ -26,6 +26,11 @@ const char *ylt_yaml_event_names[] = {
 };
 
 
+/**
+ * @brief Free memory and resources associated with the YLT context.
+ *
+ * @param ctx YLT context
+ */
 void ylt_delete_context(ylt_context_t *ctx)
 {
     yaml_parser_delete(&ctx->parser);
@@ -40,6 +45,12 @@ void ylt_delete_context(ylt_context_t *ctx)
 }
 
 
+/**
+ * @brief Throw the most recent parser error.
+ *
+ * @param ctx YLT context
+ * @throw LuaError
+ */
 void ylt_parser_error(ylt_context_t *ctx)
 {
     luaL_error(ctx->L, "%I:%I: %s: %s: %s",
@@ -51,6 +62,13 @@ void ylt_parser_error(ylt_context_t *ctx)
 }
 
 
+/**
+ * @brief Throw the most recent emitter error, with additional context.
+ *
+ * @param ctx YLT context
+ * @param msg Additional error context
+ * @throw LuaError
+ */
 void ylt_emitter_error(ylt_context_t *ctx, const char *msg)
 {
     luaL_error(ctx->L, "%I:%I: %s: %s: %s",
@@ -62,6 +80,13 @@ void ylt_emitter_error(ylt_context_t *ctx, const char *msg)
 }
 
 
+/**
+ * @brief Throw an error related to a YAML event, with additional context.
+ *
+ * @param ctx YLT context
+ * @param msg Additional error context
+ * @throw LuaError
+ */
 void ylt_event_error(ylt_context_t *ctx, const char *msg)
 {
     lua_Integer line, column;
@@ -76,6 +101,12 @@ void ylt_event_error(ylt_context_t *ctx, const char *msg)
 }
 
 
+/**
+ * @brief Evaluate a YAML stream in a YLT context.
+ *
+ * @param ctx YLT context
+ * @throw LuaError
+ */
 void ylt_evaluate_stream(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event.type != YAML_NO_EVENT))
@@ -105,6 +136,13 @@ void ylt_evaluate_stream(ylt_context_t *ctx)
 }
 
 
+/**
+ * @brief Evaluate a nested object in a YLT context.
+ *
+ * @param ctx YLT context
+ * @param processing_what Additional context for error reporting
+ * @throw LuaError
+ */
 static inline void ylt_evaluate_nested(ylt_context_t *ctx, char *processing_what)
 {
     switch (ctx->event.type) {
@@ -124,6 +162,12 @@ static inline void ylt_evaluate_nested(ylt_context_t *ctx, char *processing_what
 }
 
 
+/**
+ * @brief Evaluate a YAML document in a YLT context.
+ *
+ * @param ctx YLT context
+ * @throw LuaError
+ */
 void ylt_evaluate_document(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event.type != YAML_DOCUMENT_START_EVENT))
@@ -137,24 +181,30 @@ void ylt_evaluate_document(ylt_context_t *ctx)
 
     ylt_parse(ctx);
 
-    // If the next event has no Lua invocation tag, the content will be passed-through. Flush the buffer (output the
-    // DOCUMENT START EVENT) and continue processing.  Otherwise, change to LUA OUTPUT MODE and continue processing.
+    if (ylt_unlikely(ylt_is_lua_invocation(ctx))) {
+        // If the next event is a Lua invocation, change to LUA OUTPUT MODE and evaluate the nested document.
 
-    bool is_lua_invocation = ylt_is_lua_invocation(ctx);
-    if (is_lua_invocation)
         ctx->output_mode = YLT_LUA_OUTPUT_MODE;
-    else
-        ylt_playback_event_buffer(ctx, initial_buffer_len);
+        ylt_evaluate_nested(ctx, "document");
 
-    ylt_evaluate_nested(ctx, "document");
-
-    // If this was a Lua invocation, execute the Lua and check the output. If the output is VOID, discard the
-    // entire document. Otherwise, output the entire document starting with the buffered DOCUMENT START EVENT.
-    if (is_lua_invocation) {
+        // Then execute the Lua and check the output. If the output is VOID, discard the entire document.
+        // Otherwise, flush the buffer (output the DOCUMENT START EVENT) and render the Lua value.
         ylt_execute_lua(ctx);
-        ctx->output_mode = ylt_unlikely(ylt_lua_value_is_void(ctx)) ? YLT_DISCARD_OUTPUT_MODE : initial_output_mode;
+        if (ylt_unlikely(ylt_lua_value_is_void(ctx))) {
+            ctx->output_mode = YLT_DISCARD_OUTPUT_MODE; // We will also have to discard the DOCUMENT END EVENT.
+            ylt_truncate_event_buffer(ctx, initial_buffer_len);
+            ylt_discard_lua_value(ctx);
+        } else {
+            ctx->output_mode = initial_output_mode;
+            ylt_playback_event_buffer(ctx, initial_buffer_len);
+            ylt_render_lua_value(ctx);
+        }
+
+    } else {
+        // If the next event has no Lua invocation tag, the content will be passed through. Flush the buffer (output
+        // the DOCUMENT START EVENT) and evaluate the nested document.
         ylt_playback_event_buffer(ctx, initial_buffer_len);
-        ylt_render_lua_value(ctx);
+        ylt_evaluate_nested(ctx, "document");
     }
 
     ylt_parse(ctx); // Expect DOCUMENT END EVENT.
@@ -167,26 +217,41 @@ void ylt_evaluate_document(ylt_context_t *ctx)
 }
 
 
+/**
+ * @brief Evaluate a YAML sequence in a YLT context.
+ *
+ * @param ctx YLT context
+ * @throw LuaError
+ */
 void ylt_evaluate_sequence(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event.type != YAML_SEQUENCE_START_EVENT))
         return ylt_event_error(ctx, "Unexpected event at start of sequence");
 
+    ylt_output_mode_t initial_output_mode = ctx->output_mode;
+
     ylt_emit(ctx);
 
     for (ylt_parse(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse(ctx)) {
-        ylt_output_mode_t initial_output_mode = ctx->output_mode;
-        bool is_lua_invocation = ylt_is_lua_invocation(ctx);
-        if (is_lua_invocation)
+        if (ylt_unlikely(ylt_is_lua_invocation(ctx))) {
+            // If the next event is a Lua invocation, change to LUA OUTPUT MODE and evaluate the nested document.
             ctx->output_mode = YLT_LUA_OUTPUT_MODE;
+            ylt_evaluate_nested(ctx, "sequence");
 
-        ylt_evaluate_nested(ctx, "sequence");
-
-        // If this was a Lua invocation, execute the Lua and output the value.
-        if (is_lua_invocation) {
+            // Then execute the Lua and check the output (and restore the output mode).
             ylt_execute_lua(ctx);
             ctx->output_mode = initial_output_mode;
-            ylt_render_lua_value(ctx);
+
+            // If the output is VOID, discard the Lua value. Otherwise, render it.
+            if (ylt_unlikely(ylt_lua_value_is_void(ctx)))
+                ylt_discard_lua_value(ctx);
+            else
+                ylt_render_lua_value(ctx);
+
+        } else {
+            // If the next event is not a Lua invocation, the content will be passed through. Evaluate the
+            // nested data object.
+            ylt_evaluate_nested(ctx, "sequence");
         }
     }
 
@@ -197,15 +262,22 @@ void ylt_evaluate_sequence(ylt_context_t *ctx)
 }
 
 
+/**
+ * @brief Evaluate a YAML mapping in a YLT context.
+ *
+ * @param ctx YLT context
+ * @throw LuaError
+ */
 void ylt_evaluate_mapping(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event.type != YAML_MAPPING_START_EVENT))
         return ylt_event_error(ctx, "Unexpected event at start of mapping");
 
+    ylt_output_mode_t initial_output_mode = ctx->output_mode;
+
     ylt_emit(ctx);
 
     for (ylt_parse(ctx); ctx->event.type != YAML_MAPPING_END_EVENT; ylt_parse(ctx)) {
-        ylt_output_mode_t initial_output_mode = ctx->output_mode;
         size_t initial_buffer_len = ctx->event_buffer.len;
         bool discard_entry = false;
 
