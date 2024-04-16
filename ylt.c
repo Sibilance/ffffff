@@ -173,7 +173,6 @@ void ylt_evaluate_document(ylt_context_t *ctx)
     if (ylt_unlikely(ctx->event.type != YAML_DOCUMENT_START_EVENT))
         return ylt_event_error(ctx, "Unexpected event at start of document");
 
-    ylt_output_mode_t initial_output_mode = ctx->output_mode;
     size_t initial_buffer_len = ctx->event_buffer.len;
 
     // Buffer the document start event in case the document content indicates it should be skipped.
@@ -184,6 +183,7 @@ void ylt_evaluate_document(ylt_context_t *ctx)
     if (ylt_unlikely(ylt_is_lua_invocation(ctx))) {
         // If the next event is a Lua invocation, change to LUA OUTPUT MODE and evaluate the nested document.
 
+        ylt_output_mode_t initial_output_mode = ctx->output_mode;
         ctx->output_mode = YLT_LUA_OUTPUT_MODE;
         ylt_evaluate_nested(ctx, "document");
 
@@ -206,6 +206,9 @@ void ylt_evaluate_document(ylt_context_t *ctx)
             ylt_emit_event(ctx); // Output DOCUMENT END EVENT.
         }
 
+        // Finally, restore the original output mode.
+        ctx->output_mode = initial_output_mode;
+
     } else {
         // If the next event has no Lua invocation tag, the content will be passed through. Flush the buffer (output
         // the DOCUMENT START EVENT) and evaluate the nested document.
@@ -215,9 +218,6 @@ void ylt_evaluate_document(ylt_context_t *ctx)
         ylt_parse_event_expect(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
         ylt_emit_event(ctx); // Output DOCUMENT END EVENT.
     }
-
-    // Finally, restore the original output mode.
-    ctx->output_mode = initial_output_mode;
 }
 
 
