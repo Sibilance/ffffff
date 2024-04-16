@@ -109,13 +109,11 @@ void ylt_event_error(ylt_context_t *ctx, const char *msg)
  */
 void ylt_evaluate_stream(ylt_context_t *ctx)
 {
-    if (ylt_unlikely(ctx->event.type != YAML_NO_EVENT))
-        return ylt_event_error(ctx, "Unexpected event already parsed when evaluating stream");
+    ylt_expect_event(ctx, YAML_NO_EVENT, "Unexpected event already parsed when evaluating stream");
 
     ylt_parse_event(ctx);
 
-    if (ylt_unlikely(ctx->event.type != YAML_STREAM_START_EVENT))
-        return ylt_event_error(ctx, "Unexpected event at start of stream (expecting STREAM_START_EVENT)");
+    ylt_expect_event(ctx, YAML_STREAM_START_EVENT, "Unexpected event at start of stream (expecting STREAM_START_EVENT)");
 
     ylt_emit_event(ctx);
 
@@ -170,8 +168,7 @@ static inline void ylt_evaluate_nested(ylt_context_t *ctx, char *processing_what
  */
 void ylt_evaluate_document(ylt_context_t *ctx)
 {
-    if (ylt_unlikely(ctx->event.type != YAML_DOCUMENT_START_EVENT))
-        return ylt_event_error(ctx, "Unexpected event at start of document");
+    ylt_expect_event(ctx, YAML_DOCUMENT_START_EVENT, "Unexpected event at start of document");
 
     size_t initial_buffer_len = ctx->event_buffer.len;
 
@@ -195,14 +192,16 @@ void ylt_evaluate_document(ylt_context_t *ctx)
             ylt_discard_lua_value(ctx);
 
             // Expect (and discard) DOCUMENT END EVENT.
-            ylt_parse_event_expect(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
+            ylt_parse_event(ctx);
+            ylt_expect_event(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
             ylt_discard_event(ctx); // Discard DOCUMENT END EVENT.
         } else {
             ctx->output_mode = initial_output_mode;
             ylt_playback_event_buffer(ctx, initial_buffer_len);
             ylt_render_lua_value(ctx);
 
-            ylt_parse_event_expect(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
+            ylt_parse_event(ctx);
+            ylt_expect_event(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
             ylt_emit_event(ctx); // Output DOCUMENT END EVENT.
         }
 
@@ -215,7 +214,8 @@ void ylt_evaluate_document(ylt_context_t *ctx)
         ylt_playback_event_buffer(ctx, initial_buffer_len);
         ylt_evaluate_nested(ctx, "document");
 
-        ylt_parse_event_expect(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
+        ylt_parse_event(ctx);
+        ylt_expect_event(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
         ylt_emit_event(ctx); // Output DOCUMENT END EVENT.
     }
 }
@@ -229,8 +229,7 @@ void ylt_evaluate_document(ylt_context_t *ctx)
  */
 void ylt_evaluate_sequence(ylt_context_t *ctx)
 {
-    if (ylt_unlikely(ctx->event.type != YAML_SEQUENCE_START_EVENT))
-        return ylt_event_error(ctx, "Unexpected event at start of sequence");
+    ylt_expect_event(ctx, YAML_SEQUENCE_START_EVENT, "Unexpected event at start of sequence");
 
     ylt_emit_event(ctx);
 
@@ -259,8 +258,7 @@ void ylt_evaluate_sequence(ylt_context_t *ctx)
     }
 
     ylt_parse_event(ctx); // Expect SEQUENCE END EVENT.
-    if (ylt_unlikely(ctx->event.type != YAML_SEQUENCE_END_EVENT))
-        return ylt_event_error(ctx, "Unexpected event at end of sequnece");
+    ylt_expect_event(ctx, YAML_SEQUENCE_END_EVENT, "Unexpected event at end of sequence");
     ylt_emit_event(ctx); // Output SEQUENCE END EVENT.
 }
 
@@ -273,8 +271,7 @@ void ylt_evaluate_sequence(ylt_context_t *ctx)
  */
 void ylt_evaluate_mapping(ylt_context_t *ctx)
 {
-    if (ylt_unlikely(ctx->event.type != YAML_MAPPING_START_EVENT))
-        return ylt_event_error(ctx, "Unexpected event at start of mapping");
+    ylt_expect_event(ctx, YAML_MAPPING_START_EVENT, "Unexpected event at start of mapping");
 
     ylt_output_mode_t initial_output_mode = ctx->output_mode;
 

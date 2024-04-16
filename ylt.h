@@ -74,9 +74,8 @@ static inline void ylt_parse_event(ylt_context_t *ctx)
 }
 
 
-static inline void ylt_parse_event_expect(ylt_context_t *ctx, yaml_event_type_t expected_event_type, char *msg)
+static inline void ylt_expect_event(ylt_context_t *ctx, yaml_event_type_t expected_event_type, char *msg)
 {
-    ylt_parse_event(ctx);
     if (ylt_unlikely(ctx->event.type != expected_event_type))
         return ylt_event_error(ctx, msg);
 }
