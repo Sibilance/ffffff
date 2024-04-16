@@ -25,7 +25,6 @@ typedef enum _ylt_output_mode_e {
     YLT_EMITTER_OUTPUT_MODE,
     YLT_BUFFER_OUTPUT_MODE,
     YLT_LUA_OUTPUT_MODE,
-    YLT_DISCARD_OUTPUT_MODE,
 } ylt_output_mode_t;
 
 typedef struct _ylt_event_buffer_s {
@@ -66,7 +65,7 @@ void ylt_render_lua_value(ylt_context_t *ctx);
 void ylt_discard_lua_value(ylt_context_t *ctx);
 
 
-static inline void ylt_parse(ylt_context_t *ctx)
+static inline void ylt_parse_event(ylt_context_t *ctx)
 {
     if (ylt_unlikely(ctx->event.type != YAML_NO_EVENT))
         return ylt_event_error(ctx, "Unexpected non-empty event when parsing");
@@ -75,7 +74,15 @@ static inline void ylt_parse(ylt_context_t *ctx)
 }
 
 
-static inline void ylt_emit(ylt_context_t *ctx)
+static inline void ylt_parse_event_expect(ylt_context_t *ctx, yaml_event_type_t expected_event_type, char *msg)
+{
+    ylt_parse_event(ctx);
+    if (ylt_unlikely(ctx->event.type != expected_event_type))
+        return ylt_event_error(ctx, msg);
+}
+
+
+static inline void ylt_emit_event(ylt_context_t *ctx)
 {
     switch (ctx->output_mode) {
     case YLT_EMITTER_OUTPUT_MODE:
@@ -92,10 +99,13 @@ static inline void ylt_emit(ylt_context_t *ctx)
     case YLT_LUA_OUTPUT_MODE:
         // TODO: add to the current Lua object
         break;
-    case YLT_DISCARD_OUTPUT_MODE:
-        yaml_event_delete(&ctx->event);
-        break;
     }
+}
+
+
+static inline void ylt_discard_event(ylt_context_t *ctx)
+{
+    yaml_event_delete(&ctx->event);
 }
 
 

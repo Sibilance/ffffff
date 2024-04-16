@@ -112,22 +112,22 @@ void ylt_evaluate_stream(ylt_context_t *ctx)
     if (ylt_unlikely(ctx->event.type != YAML_NO_EVENT))
         return ylt_event_error(ctx, "Unexpected event already parsed when evaluating stream");
 
-    ylt_parse(ctx);
+    ylt_parse_event(ctx);
 
     if (ylt_unlikely(ctx->event.type != YAML_STREAM_START_EVENT))
         return ylt_event_error(ctx, "Unexpected event at start of stream (expecting STREAM_START_EVENT)");
 
-    ylt_emit(ctx);
+    ylt_emit_event(ctx);
 
     for (;;) {
-        ylt_parse(ctx);
+        ylt_parse_event(ctx);
 
         switch (ctx->event.type) {
         case YAML_DOCUMENT_START_EVENT:
             ylt_evaluate_document(ctx);
             break;
         case YAML_STREAM_END_EVENT:
-            ylt_emit(ctx);
+            ylt_emit_event(ctx);
             return;
         default:
             return ylt_event_error(ctx, "Unexpected event while processing stream");
@@ -154,7 +154,7 @@ static inline void ylt_evaluate_nested(ylt_context_t *ctx, char *processing_what
         break;
     case YAML_SCALAR_EVENT:
     case YAML_ALIAS_EVENT:
-        ylt_emit(ctx);
+        ylt_emit_event(ctx);
         break;
     default:
         ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event while processing %s", processing_what));
@@ -179,7 +179,7 @@ void ylt_evaluate_document(ylt_context_t *ctx)
     // Buffer the document start event in case the document content indicates it should be skipped.
     ylt_buffer_event(ctx);
 
-    ylt_parse(ctx);
+    ylt_parse_event(ctx);
 
     if (ylt_unlikely(ylt_is_lua_invocation(ctx))) {
         // If the next event is a Lua invocation, change to LUA OUTPUT MODE and evaluate the nested document.
@@ -191,13 +191,19 @@ void ylt_evaluate_document(ylt_context_t *ctx)
         // Otherwise, flush the buffer (output the DOCUMENT START EVENT) and render the Lua value.
         ylt_execute_lua(ctx);
         if (ylt_unlikely(ylt_lua_value_is_void(ctx))) {
-            ctx->output_mode = YLT_DISCARD_OUTPUT_MODE; // We will also have to discard the DOCUMENT END EVENT.
             ylt_truncate_event_buffer(ctx, initial_buffer_len);
             ylt_discard_lua_value(ctx);
+
+            // Expect (and discard) DOCUMENT END EVENT.
+            ylt_parse_event_expect(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
+            ylt_discard_event(ctx); // Discard DOCUMENT END EVENT.
         } else {
             ctx->output_mode = initial_output_mode;
             ylt_playback_event_buffer(ctx, initial_buffer_len);
             ylt_render_lua_value(ctx);
+
+            ylt_parse_event_expect(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
+            ylt_emit_event(ctx); // Output DOCUMENT END EVENT.
         }
 
     } else {
@@ -205,12 +211,10 @@ void ylt_evaluate_document(ylt_context_t *ctx)
         // the DOCUMENT START EVENT) and evaluate the nested document.
         ylt_playback_event_buffer(ctx, initial_buffer_len);
         ylt_evaluate_nested(ctx, "document");
-    }
 
-    ylt_parse(ctx); // Expect DOCUMENT END EVENT.
-    if (ylt_unlikely(ctx->event.type != YAML_DOCUMENT_END_EVENT))
-        return ylt_event_error(ctx, "Unexpected event at end of document");
-    ylt_emit(ctx); // Output DOCUMENT END EVENT.
+        ylt_parse_event_expect(ctx, YAML_DOCUMENT_END_EVENT, "Unexpected event at end of document");
+        ylt_emit_event(ctx); // Output DOCUMENT END EVENT.
+    }
 
     // Finally, restore the original output mode.
     ctx->output_mode = initial_output_mode;
@@ -230,9 +234,9 @@ void ylt_evaluate_sequence(ylt_context_t *ctx)
 
     ylt_output_mode_t initial_output_mode = ctx->output_mode;
 
-    ylt_emit(ctx);
+    ylt_emit_event(ctx);
 
-    for (ylt_parse(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse(ctx)) {
+    for (ylt_parse_event(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse_event(ctx)) {
         if (ylt_unlikely(ylt_is_lua_invocation(ctx))) {
             // If the next event is a Lua invocation, change to LUA OUTPUT MODE and evaluate the nested document.
             ctx->output_mode = YLT_LUA_OUTPUT_MODE;
@@ -255,10 +259,10 @@ void ylt_evaluate_sequence(ylt_context_t *ctx)
         }
     }
 
-    ylt_parse(ctx); // Expect SEQUENCE END EVENT.
+    ylt_parse_event(ctx); // Expect SEQUENCE END EVENT.
     if (ylt_unlikely(ctx->event.type != YAML_SEQUENCE_END_EVENT))
         return ylt_event_error(ctx, "Unexpected event at end of sequnece");
-    ylt_emit(ctx); // Output SEQUENCE END EVENT.
+    ylt_emit_event(ctx); // Output SEQUENCE END EVENT.
 }
 
 
@@ -275,9 +279,9 @@ void ylt_evaluate_mapping(ylt_context_t *ctx)
 
     ylt_output_mode_t initial_output_mode = ctx->output_mode;
 
-    ylt_emit(ctx);
+    ylt_emit_event(ctx);
 
-    for (ylt_parse(ctx); ctx->event.type != YAML_MAPPING_END_EVENT; ylt_parse(ctx)) {
+    for (ylt_parse_event(ctx); ctx->event.type != YAML_MAPPING_END_EVENT; ylt_parse_event(ctx)) {
         size_t initial_buffer_len = ctx->event_buffer.len;
         bool discard_entry = false;
 
@@ -298,7 +302,7 @@ void ylt_evaluate_mapping(ylt_context_t *ctx)
         }
 
         // Read the value corresponding to the above key.
-        ylt_parse(ctx);
+        ylt_parse_event(ctx);
 
         if (ylt_unlikely(discard_entry)) {
             ylt_discard_nested(ctx);
@@ -337,11 +341,11 @@ void ylt_discard_nested(ylt_context_t *ctx)
 
     switch (event_type) {
     case YAML_SEQUENCE_START_EVENT:
-        for (ylt_parse(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse(ctx))
+        for (ylt_parse_event(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse_event(ctx))
             ylt_discard_nested(ctx);
         break;
     case YAML_MAPPING_START_EVENT:
-        for (ylt_parse(ctx); ctx->event.type != YAML_MAPPING_END_EVENT; ylt_parse(ctx))
+        for (ylt_parse_event(ctx); ctx->event.type != YAML_MAPPING_END_EVENT; ylt_parse_event(ctx))
             ylt_discard_nested(ctx);
         break;
     }
@@ -373,8 +377,8 @@ void ylt_playback_event_buffer(ylt_context_t *ctx, size_t since)
 
     for (size_t i = since; i < ctx->event_buffer.len; ++i) {
         ctx->event = ctx->event_buffer.events[i];
-        ctx->event_buffer.events[i] = (yaml_event_t){0}; // Avoid double free if there is an exception in ylt_emit().
-        ylt_emit(ctx);
+        ctx->event_buffer.events[i] = (yaml_event_t){0}; // Avoid double free if there is an exception in ylt_emit_event().
+        ylt_emit_event(ctx);
     }
 
     ctx->event_buffer.len = since;
