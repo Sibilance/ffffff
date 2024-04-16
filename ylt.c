@@ -232,13 +232,12 @@ void ylt_evaluate_sequence(ylt_context_t *ctx)
     if (ylt_unlikely(ctx->event.type != YAML_SEQUENCE_START_EVENT))
         return ylt_event_error(ctx, "Unexpected event at start of sequence");
 
-    ylt_output_mode_t initial_output_mode = ctx->output_mode;
-
     ylt_emit_event(ctx);
 
     for (ylt_parse_event(ctx); ctx->event.type != YAML_SEQUENCE_END_EVENT; ylt_parse_event(ctx)) {
         if (ylt_unlikely(ylt_is_lua_invocation(ctx))) {
             // If the next event is a Lua invocation, change to LUA OUTPUT MODE and evaluate the nested document.
+            ylt_output_mode_t initial_output_mode = ctx->output_mode;
             ctx->output_mode = YLT_LUA_OUTPUT_MODE;
             ylt_evaluate_nested(ctx, "sequence");
 
