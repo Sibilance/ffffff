@@ -20,7 +20,7 @@ baz
 - param: true
 - param: false
 ---
-!if param: "hello"
+!if {param: "hello"}
 ---
 "hello"
 ---
@@ -32,7 +32,7 @@ baz
 - param: false
 ---
 - item
-- !if param: "hello"
+- !if {param: "hello"}
 ---
 - item
 - "hello"
@@ -46,7 +46,7 @@ baz
 ---
 foo: bar
 baz:
-  !if param: "hello"
+  !if {param: "hello"}
 ---
 baz: "hello"
 foo: bar
