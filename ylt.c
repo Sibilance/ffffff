@@ -290,11 +290,14 @@ void ylt_evaluate_mapping(ylt_context_t *ctx)
 
         // If this was a Lua invocation, execute the Lua and output the value to the buffer.
         // If the output is VOID, record that we should discard the value.
-        if (is_lua_invocation) {
+        if (ylt_unlikely(is_lua_invocation)) {
             ylt_execute_lua(ctx);
             discard_entry = ylt_lua_value_is_void(ctx);
             ctx->output_mode = YLT_BUFFER_OUTPUT_MODE;
-            ylt_render_lua_value(ctx);
+            if (ylt_unlikely(discard_entry))
+                ylt_discard_lua_value(ctx);
+            else
+                ylt_render_lua_value(ctx);
         }
 
         // Read the value corresponding to the above key.
@@ -304,7 +307,7 @@ void ylt_evaluate_mapping(ylt_context_t *ctx)
             ylt_discard_nested(ctx);
         } else {
             is_lua_invocation = ylt_is_lua_invocation(ctx);
-            if (is_lua_invocation) {
+            if (ylt_unlikely(is_lua_invocation)) {
                 ctx->output_mode = YLT_LUA_OUTPUT_MODE;
             } else {
                 // The output can't be VOID here, so flush the buffer and continue.
@@ -316,14 +319,16 @@ void ylt_evaluate_mapping(ylt_context_t *ctx)
 
             // If this was a Lua invocation, restore the output mode and execute the Lua. If the
             // output is VOID, discard the buffer. Otherwise, output the buffer and output the value.
-            if (is_lua_invocation) {
+            if (ylt_unlikely(is_lua_invocation)) {
                 ctx->output_mode = initial_output_mode;
                 ylt_execute_lua(ctx);
-                if (ylt_unlikely(ylt_lua_value_is_void(ctx)))
+                if (ylt_unlikely(ylt_lua_value_is_void(ctx))) {
                     ylt_truncate_event_buffer(ctx, initial_buffer_len);
-                else
+                    ylt_discard_lua_value(ctx);
+                } else {
                     ylt_playback_event_buffer(ctx, initial_buffer_len);
-                ylt_render_lua_value(ctx);
+                    ylt_render_lua_value(ctx);
+                }
             }
         }
     }
