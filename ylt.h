@@ -19,6 +19,9 @@
 const char *ylt_yaml_error_names[];
 const char *ylt_yaml_event_names[];
 const void *ylt_void_sentinel = &ylt_void_sentinel;
+const void *ylt_mapping_key_sentinel = &ylt_mapping_key_sentinel;
+const void *ylt_mapping_value_sentinel = &ylt_mapping_value_sentinel;
+const void *ylt_sequence_item_sentinel = &ylt_sequence_item_sentinel;
 
 
 typedef enum _ylt_output_mode_e {
@@ -60,6 +63,7 @@ void ylt_buffer_event(ylt_context_t *ctx);
 void ylt_playback_event_buffer(ylt_context_t *ctx, size_t since);
 void ylt_truncate_event_buffer(ylt_context_t *ctx, size_t since);
 
+void ylt_event_to_lua(ylt_context_t *ctx);
 void ylt_execute_lua(ylt_context_t *ctx);
 void ylt_render_lua_value(ylt_context_t *ctx);
 void ylt_discard_lua_value(ylt_context_t *ctx);
@@ -96,7 +100,7 @@ static inline void ylt_emit_event(ylt_context_t *ctx)
         ylt_buffer_event(ctx);
         break;
     case YLT_LUA_OUTPUT_MODE:
-        // TODO: add to the current Lua object
+        ylt_lua_from_event(ctx);
         break;
     }
 }

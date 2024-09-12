@@ -12,9 +12,9 @@
 #include "render.h"
 #include "test.h"
 
-const char *argp_program_version = "yl 0.0.0";
+const char *argp_program_version = "ylt 0.0.0";
 const char *argp_program_bug_address = "https://github.com/Sibilance/ffffff/issues";
-static char doc[] = "Render a YL template.";
+static char doc[] = "Render a YLT template.";
 static char args_doc[] = "[FILENAME]...";
 static struct argp_option options[] = {
     {"in", 'i', "FILE", 0, "Input file to read from.", 0},

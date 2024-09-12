@@ -155,7 +155,7 @@ static inline void ylt_evaluate_nested(ylt_context_t *ctx, char *processing_what
         ylt_emit_event(ctx);
         break;
     default:
-        ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event while processing %s", processing_what));
+        return ylt_event_error(ctx, lua_pushfstring(ctx->L, "Unexpected event while processing %s", processing_what));
     }
 }
 
@@ -359,7 +359,7 @@ void ylt_buffer_event(ylt_context_t *ctx)
         ctx->event_buffer.cap = (ctx->event_buffer.cap << 1) || 2;
         yaml_event_t *bigger_events = realloc(ctx->event_buffer.events, ctx->event_buffer.cap * sizeof(yaml_event_t));
         if (ylt_unlikely(bigger_events == NULL)) // Memory allocation failed. Original buffer was not freed.
-            ylt_event_error(ctx, "Failed to allocate event buffer");
+            return ylt_event_error(ctx, "Failed to allocate event buffer");
         ctx->event_buffer.events = bigger_events;
     }
 
@@ -371,10 +371,9 @@ void ylt_buffer_event(ylt_context_t *ctx)
 void ylt_playback_event_buffer(ylt_context_t *ctx, size_t since)
 {
     if (ylt_unlikely(ctx->output_mode == YLT_BUFFER_OUTPUT_MODE))
-        return; // Nothing to do. This is silly, but allowed for convenience.
+        return; // Nothing to do. The events are already buffered.
 
-    if (ylt_unlikely(ctx->event.type != YAML_NO_EVENT))
-        ylt_event_error(ctx, "Unexpected non-empty event when playing back buffer");
+    ylt_expect_event(ctx, YAML_NO_EVENT, "Unexpected non-empty event when playing back buffer");
 
     for (size_t i = since; i < ctx->event_buffer.len; ++i) {
         ctx->event = ctx->event_buffer.events[i];
@@ -389,9 +388,19 @@ void ylt_playback_event_buffer(ylt_context_t *ctx, size_t since)
 void ylt_truncate_event_buffer(ylt_context_t *ctx, size_t since)
 {
     if (ylt_unlikely(since > ctx->event_buffer.len))
-        ylt_event_error(ctx, "Truncation length cannot exceed current buffer length");
+        return ylt_event_error(ctx, "Truncation length cannot exceed current buffer length");
     for (size_t i = since; i < ctx->event_buffer.len; ++i) {
         yaml_event_delete(&ctx->event_buffer.events[i]);
     }
     ctx->event_buffer.len = since;
+}
+
+
+void ylt_event_to_lua(ylt_context_t *ctx)
+{
+    // The context will have to keep track of some kind of index into the Lua stack.
+    // The object at that index determines what we are building, or gives context as
+    // to what to build next.
+    switch (ctx->event.type) {
+    }
 }
