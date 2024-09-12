@@ -1,7 +1,6 @@
 #include <string.h>
 
 #include "event.h"
-#include "render.h"
 
 const char *yl_event_names[] = {
     "NO_EVENT",
@@ -60,10 +59,8 @@ const char *yl_event_name(yaml_event_type_t event_type)
     return yl_event_names[event_type];
 }
 
-int yl_record_event(yl_event_record_t *event_record, yaml_event_t *event, lua_State *L, yl_error_t *err)
+int yl_record_event(yl_event_record_t *event_record, yaml_event_t *event, yl_error_t *err)
 {
-    (void)L;
-
     if (event_record->length == event_record->capacity) {
         size_t new_capacity = event_record->capacity << 1;
         if (new_capacity == 0)

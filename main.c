@@ -2,15 +2,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "lauxlib.h"
-#include "lua.h"
 #include "yaml.h"
 
-#include "environment.h"
 #include "executor.h"
 #include "parser.h"
-#include "render.h"
-#include "test.h"
 
 const char *argp_program_version = "ylt 0.0.0";
 const char *argp_program_bug_address = "https://github.com/Sibilance/ffffff/issues";
@@ -63,39 +58,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
-int debug_handler(lua_State *L, yaml_event_t *event, lua_State *L2, yl_error_t *err)
+int debug_handler(void *ctx, yaml_event_t *event, yl_error_t *err)
 {
+    (void)ctx; // Unused.
     (void)err; // Unused.
-    (void)L2;  // Unused;
 
     yaml_scalar_style_t style;
     fprintf(stderr, "%zu:%zu: %s\n", event->start_mark.line + 1, event->start_mark.column + 1, yl_event_name(event->type));
-    if (lua_gettop(L)) {
-        int type = lua_type(L, 1);
-        switch (type) {
-        case LUA_TNUMBER:
-            if (lua_isinteger(L, 1))
-                fprintf(stderr, "  LUA INTEGER: %lld\n", lua_tointeger(L, 1));
-            else
-                fprintf(stderr, "  LUA FLOAT: %#.17g\n", lua_tonumber(L, 1));
-            break;
-        case LUA_TBOOLEAN:
-            fprintf(stderr, "  LUA BOOL: %s\n", lua_toboolean(L, 1) ? "true" : "false");
-            break;
-        case LUA_TSTRING:
-            fprintf(stderr, "  LUA STRING: %s\n", lua_tostring(L, 1));
-            break;
-        case LUA_TTABLE:
-            fprintf(stderr, "  LUA TABLE\n");
-            break;
-        case LUA_TNIL:
-            fprintf(stderr, "  LUA NIL\n");
-            break;
-        default:
-            fprintf(stderr, "  LUA UNEXPECTED TYPE: %s\n", lua_typename(L, type));
-        }
-        lua_settop(L, 0); // Clear the stack.
-    }
     switch (event->type) {
     case YAML_SCALAR_EVENT:
         style = event->data.scalar.style;
@@ -117,10 +86,8 @@ int debug_handler(lua_State *L, yaml_event_t *event, lua_State *L2, yl_error_t *
     return 1;
 }
 
-int emitter_handler(yaml_emitter_t *emitter, yaml_event_t *event, lua_State *L, yl_error_t *err)
+int emitter_handler(yaml_emitter_t *emitter, yaml_event_t *event, yl_error_t *err)
 {
-    (void)L;
-
     if (!yaml_emitter_emit(emitter, event))
         goto error;
 
@@ -182,34 +149,17 @@ int main(int argc, char *argv[])
     yaml_emitter_set_encoding(&emitter, YAML_UTF8_ENCODING);
     yaml_emitter_set_output_file(&emitter, args.output);
 
-    ctx.lua = luaL_newstate();
-    if (ctx.lua == NULL) {
-        fprintf(stderr, "Error initializing lua!\n");
-        goto error;
-    }
-
-    yl_load_safe_libraries(ctx.lua);
-
-    ctx.consumer.callback = (yl_event_consumer_callback_t *)yl_render_event;
     if (args.debug) {
         ctx.consumer.callback = (yl_event_consumer_callback_t *)debug_handler;
-        ctx.consumer.data = ctx.lua;
+        ctx.consumer.data = NULL;
     } else {
         ctx.consumer.callback = (yl_event_consumer_callback_t *)emitter_handler;
         ctx.consumer.data = &emitter;
     }
 
     if (args.test) {
-        if (!yl_test_stream(&ctx)) {
-            fprintf(stderr, "Error testing stream!\n");
-            fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
-                    ctx.err.line + 1,
-                    ctx.err.column + 1,
-                    yl_error_name(ctx.err.type),
-                    ctx.err.context,
-                    ctx.err.message);
-            goto error;
-        }
+        fprintf(stderr, "Not implemented!\n");
+        goto error;
     } else if (!yl_execute_stream(&ctx)) {
         fprintf(stderr, "Error executing stream!\n");
         fprintf(stderr, "%zu:%zu: %s: %s: %s\n",
@@ -223,15 +173,12 @@ int main(int argc, char *argv[])
 
     yaml_parser_delete(&parser);
     yaml_emitter_delete(&emitter);
-    lua_close(ctx.lua);
 
     return 0;
 
 error:
     yaml_parser_delete(&parser);
     yaml_emitter_delete(&emitter);
-    if (ctx.lua)
-        lua_close(ctx.lua);
 
     return 1;
 }

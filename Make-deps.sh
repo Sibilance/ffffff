@@ -10,9 +10,6 @@ function dependencies() {
     fi
     for file in $deps; do
         case "$file" in 
-            "lua.h"|"lauxlib.h"|"lualib.h")
-                echo "lua/install"
-                ;;
             "yaml.h")
                 echo "libyaml/install"
                 ;;

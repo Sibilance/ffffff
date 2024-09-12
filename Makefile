@@ -1,8 +1,8 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror
-ALL_CFLAGS = $(CFLAGS) -Ilibyaml/install/include -Ilua/install/include
-YL_LDFLAGS = -Llibyaml/install/lib -Llua/install/lib
-YL_LDLIBS = -llua -lyaml -lm -largp
+ALL_CFLAGS = $(CFLAGS) -Ilibyaml/install/include
+YL_LDFLAGS = -Llibyaml/install/lib
+YL_LDLIBS = -lyaml -lm -largp
 
 .PHONY: all
 all: build/main.out
@@ -19,7 +19,6 @@ Make-deps.mk: *.c *.h Make-deps.sh
 
 include Make-deps.mk
 include Make-libyaml.mk
-include Make-lua.mk
 
 .PHONY: clean
 clean:
